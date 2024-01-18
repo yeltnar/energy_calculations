@@ -1,16 +1,17 @@
 import fs from 'fs/promises';
-import axios from 'axios'
+import axios from 'axios';
+import config from 'config';
 
 const cache_directory = './production_content';
 
 fs.mkdir(`${cache_directory}`).catch(()=>{});
 
-const site = process.env.site;
-const api_key = process.env.api_key; 
+const site = config.site;
+const api_key = config.api_key; 
 
 export async function getProductionContent(date_ms){
 
-    console.log(date_ms);
+    // console.log(date_ms);
     
     const { year, month, day } = getMonthDeats(date_ms)
 
@@ -23,9 +24,6 @@ export async function getProductionContent(date_ms){
     // console.log(production_content);
 
     const production = production_content.power.values;
-    
-    // process.exit();
-    // const production = JSON.parse((await (fs.readFile('./content.json'))).toString()).power.values;
     
     const production_obj = {};
     production.forEach((c)=>{
@@ -41,7 +39,15 @@ export async function getProductionContent(date_ms){
     return production_obj;
   } 
 
+function timeoutPromise(ms){
+    return new Promise((resolve, reject)=>{
+        setTimeout(resolve,ms);
+    }); 
+}
+
 async function requestProductionContent(site, api_key, startTime, endTime){
+
+    let final_wait = (async()=>{})()
 
     let to_return = await getCachedProductionData(site, startTime, endTime);
     if( to_return === false ){
@@ -52,6 +58,7 @@ async function requestProductionContent(site, api_key, startTime, endTime){
         const _url = `https://do.andbrant.com`;
         to_return = (await axios.get(url)).data;
         // console.log(JSON.stringify(to_return))
+        final_wait = timeoutPromise(500);
         await fs.writeFile(
             getCacheName(site, startTime, endTime), 
             JSON.stringify(to_return)
@@ -59,6 +66,7 @@ async function requestProductionContent(site, api_key, startTime, endTime){
 
     }
 
+    await final_wait; // wait for a bit so we don't get rate limited, if made network request
     return to_return;
 }
 

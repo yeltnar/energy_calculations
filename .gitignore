@@ -1,3 +1,4 @@
 node_modules
 production_content
 r.sh
+config/local.json

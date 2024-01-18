@@ -5,16 +5,16 @@ import fs from 'fs/promises';
 
 import {getProductionContent} from './getProductionContent.js'
 
-// const {getProductionContent} = require('./getProductionContent');
+const out_directory = "./out";
 
-async function getMeterContent(){
-  const file_path = './content.csv';
+async function getMeterContent( file_path = process.argv[2] ){
+  console.log(`file_path is ${file_path}`);
   return (await fs.readFile(file_path)).toString(); 
 }
 
-;(async()=>{
+async function processSingleFile( file_path ){
 
-  const input = await getMeterContent();
+  const input = await getMeterContent( file_path );
 
   let records = parse(input, {
     columns: true,
@@ -34,6 +34,8 @@ async function getMeterContent(){
 
   addRawProduction( records_obj, production_obj )
   addTotalUsage(records_obj);
+  invertField(records_obj, 'Consumption');
+  // invertField(records_obj, 'Surplus Generation');
 
   let final_arr = getCSVArr(records_obj);
   
@@ -43,8 +45,24 @@ async function getMeterContent(){
   });
   
   // const date = getSimpleMonth(final_arr[1][0]);
-  fs.writeFile(`final_${formatted_date}.csv`,stringify(final_arr));
+  fs.mkdir(`${out_directory}`).catch(()=>{});
+  const out_file = `${out_directory}/final_${formatted_date}.csv`;
+  console.log(`writing to ${out_file}`);
+  fs.writeFile( `${out_file}` ,stringify(final_arr) );
 
+}
+
+(async()=>{
+
+  const in_directory = './in_csv';
+
+  const csv_list = await fs.readdir(in_directory);
+
+  for( let i=0; i<csv_list.length; i++ ){
+    const file_path = `${in_directory}/${csv_list[i]}`;
+    await processSingleFile( file_path );
+  }
+  
 })();
 
 function getSimpleMonth(date_var){
@@ -117,8 +135,16 @@ function addTotalUsage(records_obj){
 
   for( let k in records_obj ){
     const c = records_obj[k];
-    c.total_usage = (1 * c.raw_production) - c['Surplus Generation'] + c['Consumption'];
+    c.total_usage = (-1 * c.raw_production) + c['Surplus Generation'] - c['Consumption'];
     // c.total_usage = (-1 * c.raw_production) + c['Consumption'];
+  }
+
+}
+
+function invertField(records_obj, field){
+
+  for( let k in records_obj ){
+    records_obj[k][field] = records_obj[k][field] * -1;
   }
 
 }
