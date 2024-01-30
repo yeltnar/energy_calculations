@@ -1,0 +1,202 @@
+#!/usr/bin/env node
+// bail if we don't have our ENV set:
+import fs from 'fs/promises';
+
+async function download_energy_report(out_dir=`./in_csv`){
+
+  if (!process.env.JMAP_TOKEN) {
+    console.log("Please set your JMAP_USERNAME and JMAP_TOKEN");
+    console.log("JMAP_USERNAME=username JMAP_TOKEN=token node hello-world.js");
+
+    process.exit(1);
+  }
+
+  let num_results = 3;
+  if (!process.env.num_results) {
+    console.log("Please set your num_results environment variable");
+    console.log("num_results=3 node hello-world.js");
+
+    process.exit(1);
+  }else{
+    num_results = parseInt(process.env.num_results);
+  }
+
+  console.log(`using ${num_results} email results`);
+
+  const jmap_token = process.env.JMAP_TOKEN;
+
+  const hostname = process.env.JMAP_HOSTNAME || "api.fastmail.com";
+  const username = process.env.JMAP_USERNAME;
+
+  const authUrl = `https://${hostname}/.well-known/jmap`;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${jmap_token}`,
+  };
+
+  const getSession = async () => {
+    // should not cache 
+    const response = await fetch(authUrl, {
+      method: "GET",
+      headers,
+    });
+    return response.json();
+  };
+
+  const inboxIdQuery = async (api_url, account_id) => {
+    // should not cache 
+    const response = await fetch(api_url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        using: ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+        methodCalls: [
+          [
+            "Mailbox/query",
+            {
+              accountId: account_id,
+              filter: { role: "inbox", hasAnyRole: true },
+            },
+            "a",
+          ],
+        ],
+      }),
+    });
+
+    const data = await response.json();
+
+    const inbox_id = data["methodResponses"][0][1]["ids"][0];
+
+    if (!inbox_id.length) {
+      console.error("Could not get an inbox.");
+      process.exit(1);
+    }
+
+    return await inbox_id;
+  };
+
+  const mailboxQuery = async (api_url, account_id, inbox_id, num_results=10) => {
+    // should not cache
+    const response = await fetch(api_url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        using: ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+        methodCalls: [
+          [
+            "Email/query",
+            {
+              accountId: account_id,
+              filter: { 
+                // inMailbox: inbox_id,
+                from: "info@communications.smartmetertexas.com",
+                hasAttachment: true
+              },
+              sort: [{ property: "receivedAt", isAscending: false }],
+              limit: num_results,
+            },
+            "a",
+          ],
+          [
+            "Email/get",
+            {
+              accountId: account_id,
+              properties: ["id", "subject", "receivedAt", "attachments"],
+              "#ids": {
+                resultOf: "a",
+                name: "Email/query",
+                path: "/ids/*",
+              },
+            },
+            "b",
+          ],
+          // [
+          //   "Email/get",
+          //   {
+          //     accountId: account_id,
+          //     // properties: ["id", "subject", "receivedAt", "attachments"],
+          //     "#ids": {
+          //       resultOf: "b",
+          //       name: "Email/query",
+          //       path: "/list/attachments/*/blobId",
+          //     },
+          //   },
+          //   "c",
+          // ]
+        ],
+      }),
+    });
+
+    const data = await response.json();
+
+    return await data;
+  };
+
+  return await getSession().then(async(session) => {
+    const api_url = session.apiUrl;
+    const account_id = session.primaryAccounts["urn:ietf:params:jmap:mail"];
+    // console.log({api_url,account_id});
+    await inboxIdQuery(api_url, account_id).then(async(inbox_id) => {
+      await mailboxQuery(api_url, account_id, inbox_id, num_results).then(async(emails) => {
+        // fs.writeFile('out.json',JSON.stringify(emails,null,2));
+        
+        const to_wait = emails["methodResponses"][1][1]["list"].map(async (email) => {
+
+          // const account_id=;
+          const { blobId, name, type }=email.attachments[0];
+          // const access_token=jmap_token;
+
+          await downloadFile({ account_id, blobId, name, type, out_dir });
+
+          // console.log({
+          //   email,
+          // });
+
+          // console.log(`${email.receivedAt} — ${email.subject}`);
+        });
+        await Promise.all(to_wait);
+      });
+    });
+  });
+
+  async function downloadFile({ account_id, blobId, name, type, out_dir }){
+    
+    const out_path = `${out_dir}/${name}`;
+
+    try{
+      
+      const saved_file = await fs.readFile(out_path);
+      // console.log(`file \'${out_path}\' found; not downloading`);
+      return saved_file.toString();
+      
+    }catch(e){
+      console.log(`file \'${name}\' NOT found; downloading`);
+    }
+
+    const download_url = `https://www.fastmailusercontent.com/jmap/download/${account_id}/${blobId}/${name}?type=${type}`;
+
+    const bearer_token = jmap_token;
+
+    const headers = {
+      'content-type':'application/json',
+      'Authorization':`Bearer ${bearer_token}`
+    }
+
+    // TODO change to cached request
+    const response = await fetch(download_url, {
+      method: "POST",
+      headers,
+    });
+
+    const attachment_content = await response.text();
+
+    // console.log({out_path});
+    // process.exit();
+    await fs.writeFile( out_path, attachment_content );
+
+    return attachment_content;
+
+  }
+}
+
+export default download_energy_report;
