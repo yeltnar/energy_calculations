@@ -3,12 +3,21 @@ import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 import fs from 'fs/promises';
 
+import download_energy_report from './download_energy_report.js';
+
 import {getProductionContent} from './getProductionContent.js'
+
+function timeoutPromise(ms){
+  return new Promise((resolve, reject)=>{
+    setTimeout(resolve,ms);
+  }); 
+}
+
 
 const out_directory = "./out";
 
 async function getMeterContent( file_path = process.argv[2] ){
-  console.log(`file_path is ${file_path}`);
+  // console.log(`file_path is ${file_path}`);
   return (await fs.readFile(file_path)).toString(); 
 }
 
@@ -47,21 +56,37 @@ async function processSingleFile( file_path ){
   // const date = getSimpleMonth(final_arr[1][0]);
   fs.mkdir(`${out_directory}`).catch(()=>{});
   const out_file = `${out_directory}/final_${formatted_date}.csv`;
-  console.log(`writing to ${out_file}`);
+  // console.log(`writing to ${out_file}`);
   fs.writeFile( `${out_file}` ,stringify(final_arr) );
 
 }
 
 (async()=>{
 
+  console.log('start');
+  
   const in_directory = './in_csv';
 
-  const csv_list = await fs.readdir(in_directory);
+  await download_energy_report(in_directory);
+
+
+  let csv_list = await fs.readdir(in_directory);
+  csv_list = csv_list.reduce((acc,c)=>{
+    if(/.csv$/i.test(c)){
+      acc.push(c);
+    }
+    return acc;
+  },[]);
 
   for( let i=0; i<csv_list.length; i++ ){
     const file_path = `${in_directory}/${csv_list[i]}`;
-    await processSingleFile( file_path );
+    await processSingleFile( file_path ).catch(e=>{
+      console.error(e);
+      throw new Error(`error parsing file: ${csv_list[i]}`);
+    });
   }
+
+  console.log('done');
   
 })();
 
@@ -124,8 +149,7 @@ function addRawProduction( records_obj, production_obj ){
 
   for( let k in records_obj ){
     // divide by 1000 to convert to KWh 
-    // multiply by 15/60 cuz its in Watts in 15 min chunks, not Wh
-    records_obj[k].raw_production = production_obj[k].value / 1000 * (15/60); 
+    records_obj[k].raw_production = production_obj[k].value / 1000; 
   }
 
   return records_obj;

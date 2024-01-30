@@ -75,8 +75,6 @@ async function requestProductionContent(site, api_key, startTime, endTime){
             JSON.stringify(to_return)
         );
 
-    }else{
-        console.log(`found cache ${startTime}`);
     }
 
     await final_wait; // wait for a bit so we don't get rate limited, if made network request

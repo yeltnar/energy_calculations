@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // bail if we don't have our ENV set:
 import fs from 'fs/promises';
+import config from 'config';
 
 async function download_energy_report(out_dir=`./in_csv`){
 
-  if (!process.env.JMAP_TOKEN) {
+  if (!config.JMAP_TOKEN) {
     console.log("Please set your JMAP_USERNAME and JMAP_TOKEN");
     console.log("JMAP_USERNAME=username JMAP_TOKEN=token node hello-world.js");
 
@@ -12,21 +13,21 @@ async function download_energy_report(out_dir=`./in_csv`){
   }
 
   let num_results = 3;
-  if (!process.env.num_results) {
+  if (!config.num_results) {
     console.log("Please set your num_results environment variable");
     console.log("num_results=3 node hello-world.js");
 
     process.exit(1);
   }else{
-    num_results = parseInt(process.env.num_results);
+    num_results = parseInt(config.num_results);
   }
 
   console.log(`using ${num_results} email results`);
 
-  const jmap_token = process.env.JMAP_TOKEN;
+  const jmap_token = config.JMAP_TOKEN;
 
-  const hostname = process.env.JMAP_HOSTNAME || "api.fastmail.com";
-  const username = process.env.JMAP_USERNAME;
+  const hostname = config.JMAP_HOSTNAME || "api.fastmail.com";
+  const username = config.JMAP_USERNAME;
 
   const authUrl = `https://${hostname}/.well-known/jmap`;
   const headers = {

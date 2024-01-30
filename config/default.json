@@ -1,4 +1,6 @@
 {
     "site":"",
-    "api_key":""
+    "api_key":"",
+    "num_results":10,
+    "JMAP_TOKEN":""
 }
