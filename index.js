@@ -4,8 +4,8 @@ import { stringify } from 'csv-stringify/sync';
 import fs from 'fs/promises';
 
 import download_energy_report from './download_energy_report.js';
-
 import {getProductionContent} from './getProductionContent.js'
+import {loadEnergyPrices} from './loadEnergyPrices.js'
 
 function timeoutPromise(ms){
   return new Promise((resolve, reject)=>{
@@ -61,14 +61,17 @@ async function processSingleFile( file_path ){
 
 }
 
+// main
 (async()=>{
 
   console.log('start');
   
   const in_directory = './in_csv';
 
-  await download_energy_report(in_directory);
+  const energy_prices = await loadEnergyPrices(); 
 
+  const num_results = 3;
+  await download_energy_report(in_directory, num_results);
 
   let csv_list = await fs.readdir(in_directory);
   csv_list = csv_list.reduce((acc,c)=>{
