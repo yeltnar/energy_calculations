@@ -1,0 +1,1 @@
+all calculations are based off a timestamp from the start of time time winddow 
