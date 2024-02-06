@@ -1,29 +1,35 @@
 import { parse } from 'csv-parse/sync';
 import fs from 'fs/promises';
 import {getDailyEnergyPrice} from './getDailyEnergyPrice.js';
+import suplimentRecord from './suplimentRecord.js';
 
 // const file_path = './energy_prices/jan_LZ_NORTH.csv';
 const historical_input_path = './energy_prices/historical/';
-const daily_input_path = './energy_prices';
+const daily_input_path = './energy_prices/daily';
 
 export async function loadEnergyPrices(){
-    return await loadHistoricalEnergyPrices(historical_input_path);
+
+    let cur_price_obj = {};
+
+    cur_price_obj = await getDailyEnergyPrice(daily_input_path, cur_price_obj);
+    cur_price_obj = await loadHistoricalEnergyPrices(historical_input_path, cur_price_obj);
+
+    fs.writeFile('/tmp/all_price.json',JSON.stringify(cur_price_obj));
+
+    return cur_price_obj;
 }
 
-export async function loadHistoricalEnergyPrices(historical_input_path){
+async function loadHistoricalEnergyPrices(historical_input_path, cur_price_obj){
 
     let files = await fs.readdir(historical_input_path);
     files = files.filter((cur)=>/csv$/.test(cur));
-    console.log(files);
-
-    let to_return = {};
     
     for(let i=0; i<files.length; i++){
         const cur = files[i];
-        to_return = await loadSingleHistoricalEnergyPrices(`${historical_input_path}/${cur}`, to_return);
+        cur_price_obj = await loadSingleHistoricalEnergyPrices(`${historical_input_path}/${cur}`, cur_price_obj);
     }
 
-    return to_return;
+    return cur_price_obj;
 }
 
 async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
@@ -41,41 +47,22 @@ async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
         skip_empty_lines: true
     });
 
-    records = records.map((cur)=>{
+    // records = suplimentRecord(record);
 
-        let hr = cur.delivery_hour-1;
-        if( hr < 10 ){
-            hr = "0"+hr;
-        }else{
-            hr = ""+hr;
-        }
 
-        let min = (cur.delivery_interval-1)*15;
-        if( min < 10 ){
-            min = "0"+min;
-        }else{
-            min = ""+min;
-        }
+    records = records.map( suplimentRecord );
 
-        cur.date_str = `${cur.delivery_date} ${hr}:${min}`;
-        cur.date = new Date(cur.date_str);
-        cur.date_ms = cur.date.getTime();
-        cur.date_formatted = cur.date.toString();
-
-        cur.settlement_point_price_dollar_kwh = cur.settlement_point_price / 1000;
-
-        return cur;
-    });
+    records._from_history = true;
 
     // console.log(records.length)
-    console.log(records[0]);
+    // console.log(records[0]);
 
     const to_return = records.reduce((acc,cur)=>{
         acc[cur.date_ms] = cur;
         return acc;
     },obj_for_data);
 
-    console.log(to_return);
+    // console.log(to_return);
     
     return to_return;
 }
