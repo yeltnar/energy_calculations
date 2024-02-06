@@ -3,7 +3,7 @@
 import fs from 'fs/promises';
 import config from 'config';
 
-async function download_energy_report(out_dir=`./in_csv`){
+async function download_energy_report(out_dir=`./in_csv`, num_results=3){
 
   if (!config.JMAP_TOKEN) {
     console.log("Please set your JMAP_USERNAME and JMAP_TOKEN");
@@ -11,8 +11,7 @@ async function download_energy_report(out_dir=`./in_csv`){
 
     process.exit(1);
   }
-
-  let num_results = 3;
+  
   if (!config.num_results) {
     console.log("Please set your num_results environment variable");
     console.log("num_results=3 node hello-world.js");
@@ -192,7 +191,6 @@ async function download_energy_report(out_dir=`./in_csv`){
     const attachment_content = await response.text();
 
     // console.log({out_path});
-    // process.exit();
     await fs.writeFile( out_path, attachment_content );
 
     return attachment_content;
