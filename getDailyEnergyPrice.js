@@ -1,14 +1,31 @@
 // /private/tmp/xml-js/index.js
 
-const {parse: htmlParse} = require('node-html-parser');
+import {parse as htmlParse} from 'node-html-parser';
 // const {parse: csvParse} = require('csv-parse/sync');
 // const { stringify } = require('csv-stringify/sync');
-const fs = require('fs/promises');
+import fs from 'fs/promises';
+import Decimal from 'decimal.js';
+import suplimentRecord from './suplimentRecord.js';
 
 const DESIRED_ZONE = 'LZ_NORTH';
-const HTML_DIR = './html';
 
-;(async()=>{
+// I'm lazy // maps interval ending to minute count format 
+const INTERVAL_ENDING_MIN_MAP = {
+    '00': 4,
+    '15': 1,
+    '30': 2,
+    '45': 3,
+};
+
+export async function getDailyEnergyPrice(daily_input_path, cur_price_obj){
+    let to_return = await readDailyEnergyCSV(daily_input_path);
+    to_return = to_return[DESIRED_ZONE].reduce((acc,cur)=>{
+        acc[cur.date_ms] = cur;
+        return acc;
+    },cur_price_obj);
+    return to_return;
+}
+async function readDailyEnergyCSV(HTML_DIR){
     const html_files = await fs.readdir(HTML_DIR);
     // console.log(JSON.stringify(html_files,null,2));
     // return
@@ -25,69 +42,17 @@ const HTML_DIR = './html';
 
         if(/202(312|401(0|1[0-8])).*/.test(file)){
         // if(/20240122/.test(file)){
-            console.log(file);
-            report_obj = await getReportObj(`${HTML_DIR}/${file}`, report_obj);
+            report_obj = await getDailyReportObj(`${HTML_DIR}/${file}`, report_obj);
         }
     }
 
-    (()=>{
-
-        function getToPrint( num ){
-            
-            if ( num < 10 ){
-                num = "0"+num;
-            }
-
-            const r1 = new RegExp(`${num}[1-9]{1}[0-9]{1}`);
-            const r2 = new RegExp(`${num+1}00`);
-
-            return report_obj[DESIRED_ZONE].reduce((acc,cur)=>{
-                if( r1.test(cur.interval_ending) || r2.test(cur.interval_ending) ){
-                    acc.push(cur);
-                }
-                return acc;
-            },[]);
-
-        }
-
-
-        for ( let i=0; i<24; i++ ){
-
-            const to_print = getToPrint( i );
-
-            const smol_avg_obj = to_print.reduce(( acc, cur )=>{
-                acc = {
-                    sum: parseFloat(cur.price) + acc.sum,
-                    count: acc.count+1,
-                }
-                acc.avg = acc.sum / acc.count;
-                return acc;
-            },{sum:0,count:0,avg:0});
-            // console.log(smol_avg_obj);
-
-        }
-
-    })();
-
     // const file_path = 'html/20231225.html';
 
-    return console.log(report_obj);
+    return report_obj;
 
+}
 
-    const avg_obj = report_obj[DESIRED_ZONE].reduce(( acc, cur )=>{
-        acc = {
-            sum: parseFloat(cur.price) + acc.sum,
-            count: acc.count+1,
-        }
-        acc.avg = acc.sum / acc.count;
-        return acc;
-    },{sum:0,count:0,avg:0});
-
-    console.log(avg_obj);
-
-})();
-
-async function getReportObj(file_path, report_obj={}){        
+async function getDailyReportObj(file_path, report_obj={}){        
 
     let html = (await fs.readFile(file_path)).toString();
     const root = htmlParse(html);
@@ -108,6 +73,7 @@ async function getReportObj(file_path, report_obj={}){
         if( row_index===0 ){
             cur.forEach(( cur, column_index )=>{
                 if( column_index===0 || column_index===1 ){return} // don't add metadata columns
+                // if(cur!==DESIRED_ZONE){return;} // only deal with my zone 
                 if( acc[cur]===undefined ){
                     acc[cur] = [];
                 }
@@ -115,14 +81,41 @@ async function getReportObj(file_path, report_obj={}){
         }else{
             const new_data = cur.forEach((cur, i, row_arr)=>{
                 if( i===0 || i===1 ){return} // don't add metadata columns
-                const key = csv_arr[0][i];
-                const time = row_arr[0];
-                const interval_ending = row_arr[1];
-                acc[key].push({
-                    time,
-                    interval_ending,
-                    price: cur,
-                });
+                const key = csv_arr[0][i]; // this is the zone
+
+                // if (key!==DESIRED_ZONE){return;} // only deal with my zone 
+
+                const delivery_date = row_arr[0];
+                const interval_ending = row_arr[1];                
+                
+                let  delivery_min = /.{2}$/.exec(interval_ending)[0];
+                let  delivery_interval = INTERVAL_ENDING_MIN_MAP[delivery_min];
+                let  delivery_hour = parseInt(/.{2}/.exec(interval_ending)[0]);
+                if(delivery_interval!==4){
+                    delivery_hour++; // add an hour if in first 3 'ending' segments, but not fourth
+                }
+
+                let settlement_point_price = new Decimal(cur);
+                // const settlement_point_price_dollar_kwh = parseFloat(cur)/1000;
+                const settlement_point_price_dollar_kwh = (new Decimal(cur)).dividedBy(1000);
+                let data = {
+                    delivery_date,
+                    delivery_hour,
+                    delivery_interval,
+                    settlement_point_name: DESIRED_ZONE,
+                    settlement_point_price,
+                    settlement_point_price_dollar_kwh,
+                    _src_data:{
+                        delivery_date,
+                        interval_ending,
+                    }
+                };
+
+
+                data = suplimentRecord(data);
+
+                acc[key].push(data);
+
                 // console.log(acc);
                 return 
                 csv_arr[0][i];
