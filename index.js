@@ -142,14 +142,33 @@ function listToObjSupplementData(records){
       records_obj[key] = {
         "ms": USAGE_MS,
         "usage_time": new Date(USAGE_MS).toString(),
-        _og_data: c,
       }
     }
 
+    if( records_obj[key]._og_data === undefined ){
+      records_obj[key]._og_data = {};
+    }
+    records_obj[key]._og_data[type] = c
     records_obj[key][type] = parseFloat(c.USAGE_KWH);
 
   });
 
+  for( let key in records_obj){
+
+    if( records_obj[key]._og_data === undefined ){
+      console.error('aa!!!');
+      process.exit(-1);
+    }
+    if( records_obj[key]._og_data['Surplus Generation'] === undefined ){
+      // fill in 0 production if needed 
+      records_obj[key]._og_data['Surplus Generation'] = JSON.parse(JSON.stringify(records_obj[key]._og_data['Consumption']));
+      records_obj[key]._og_data['Surplus Generation'].CONSUMPTION_SURPLUSGENERATION = 'Surplus Generation';
+      records_obj[key]._og_data['Surplus Generation'].REVISION_DATE = 'NA';
+      records_obj[key]._og_data['Surplus Generation'].USAGE_KWH = "0";
+      records_obj[key]._og_data['Surplus Generation'].ESTIMATED_ACTUAL = 'A';
+      records_obj[key]['Surplus Generation'] = 0;
+    }
+  }
   return records_obj;
 }
 
@@ -157,7 +176,12 @@ function addRawProduction( records_obj, production_obj ){
 
   for( let k in records_obj ){
     // divide by 1000 to convert to KWh 
-    records_obj[k].raw_production = new Decimal(production_obj[k].value).dividedBy(1000).toNumber(); 
+    const production = production_obj[k].value;
+    if(!production && production!==0){
+      console.error({production});
+      console.log('production is zero');
+    }
+    records_obj[k].raw_production = new Decimal(production).dividedBy(1000).toNumber(); 
   }
 
   return records_obj;
@@ -167,17 +191,19 @@ function addTotalUsage(records_obj){
 
   for( let k in records_obj ){
     const c = records_obj[k];
-    c.total_usage = new Decimal(c.raw_production).times(-1).add(c['Surplus Generation']||0).sub(c['Consumption']||0).toNumber();
+    c.total_usage = new Decimal(c.raw_production)
+      .times(-1)
+      .add( c['Surplus Generation'] || 0 )
+      .sub( c['Consumption'] || 0 )
+      .toNumber();
   }
 
 }
 
 function invertField(records_obj, field){
-
   for( let k in records_obj ){
     records_obj[k][field] = records_obj[k][field] * -1;
   }
-
 }
 
 function addPrice(records_obj, energy_prices){
@@ -190,10 +216,12 @@ function addPrice(records_obj, energy_prices){
     if( price_obj!==undefined ){
       records_obj[k].price = price_obj.settlement_point_price_dollar_kwh;
       records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['Surplus Generation']).toNumber();
-      console.log({
-        earned: records_obj[k].earned
-      });
+      records_obj[k].earned_rounded = new Decimal(records_obj[k].earned).times(100).round().dividedBy(100).toNumber();
     }else{
+      console.error({
+        msg:'price undefined',
+        o: records_obj[k].usage_time,
+      })
       records_obj[k].price = NaN;
       records_obj[k].earned = NaN;
       
@@ -201,16 +229,23 @@ function addPrice(records_obj, energy_prices){
   }
   return records_obj;
 }
+
 function getCSVArr(records_obj){
 
-  let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned'];
-  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned'];
+  let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned', 'earned_rounded'];
+  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned', 'earned_rounded'];
   let final_arr = [column_headers];
   for ( let k in records_obj){
     const new_record = []; // line starts with the ms line 
     
     key_values.forEach((c)=>{
-      new_record.push(records_obj[k][c]);      
+      let to_push = records_obj[k][c];
+      
+      if(c==='Surplus Generation' && to_push===undefined){
+        to_push = 0;
+      }
+
+      new_record.push(to_push);
     });
     
     final_arr.push(new_record);

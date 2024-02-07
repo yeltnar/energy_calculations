@@ -93,7 +93,6 @@ async function getDailyReportObj(file_path, report_obj={}){
                 }
 
                 let settlement_point_price = new Decimal(cur);
-                // const settlement_point_price_dollar_kwh = parseFloat(cur)/1000;
                 const settlement_point_price_dollar_kwh = (new Decimal(cur)).dividedBy(1000);
                 let data = {
                     delivery_date,
