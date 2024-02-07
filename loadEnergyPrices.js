@@ -14,7 +14,6 @@ export async function loadEnergyPrices(){
     cur_price_obj = await getDailyEnergyPrice(daily_input_path, cur_price_obj);
     cur_price_obj = await loadHistoricalEnergyPrices(historical_input_path, cur_price_obj);
 
-    fs.writeFile('/tmp/all_price.json',JSON.stringify(cur_price_obj));
 
     return cur_price_obj;
 }
@@ -35,10 +34,22 @@ async function loadHistoricalEnergyPrices(historical_input_path, cur_price_obj){
 async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
 
     let csv = (await fs.readFile(file_path)).toString();
-    let csv_arr = csv.split('\n');
+    let csv_arr = csv.split('\r').join();
+    csv_arr = csv.split('\n');
+    
+    await fs.writeFile("/tmp/records.tmp",csv);
     
     // fix column titles 
     csv_arr[0] = csv_arr[0].split(' ').join("_").toLowerCase();
+
+    // for some reason im getting non printable chars 
+    csv_arr[0] = [...csv_arr[0]].reduce((acc,cur,i,arr)=>{
+        const code = cur.charCodeAt();
+        if(code<60000){
+            acc.push(cur);
+        }
+        return acc;
+    },[]).join("");
 
     csv = csv_arr.join('\n');
     
@@ -46,8 +57,6 @@ async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
         columns: true,
         skip_empty_lines: true
     });
-
-    // records = suplimentRecord(record);
 
 
     records = records.map( suplimentRecord );
