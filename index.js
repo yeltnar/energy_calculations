@@ -216,7 +216,6 @@ function addPrice(records_obj, energy_prices){
     if( price_obj!==undefined ){
       records_obj[k].price = price_obj.settlement_point_price_dollar_kwh;
       records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['Surplus Generation']).toNumber();
-      records_obj[k].earned_rounded = new Decimal(records_obj[k].earned).times(100).round().dividedBy(100).toNumber();
     }else{
       console.error({
         msg:'price undefined',
@@ -232,8 +231,8 @@ function addPrice(records_obj, energy_prices){
 
 function getCSVArr(records_obj){
 
-  let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned', 'earned_rounded'];
-  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned', 'earned_rounded'];
+  let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned'];
+  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned'];
   let final_arr = [column_headers];
   for ( let k in records_obj){
     const new_record = []; // line starts with the ms line 
