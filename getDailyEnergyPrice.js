@@ -25,10 +25,12 @@ export async function getDailyEnergyPrice(daily_input_path, cur_price_obj){
     },cur_price_obj);
     return to_return;
 }
-async function readDailyEnergyCSV(HTML_DIR){
-    const html_files = await fs.readdir(HTML_DIR);
+async function readDailyEnergyCSV(daily_input_path){
+    let html_files = await fs.readdir(daily_input_path);
     // console.log(JSON.stringify(html_files,null,2));
-    // return
+    // return process.exit();
+
+    html_files = html_files.filter(c=>/\.html$/i.test(c));
 
     if(html_files.length===0){
         throw new Error('no files found; exiting');
@@ -37,13 +39,8 @@ async function readDailyEnergyCSV(HTML_DIR){
     let report_obj;
 
     for( let k in html_files ){
-
         const file = html_files[k];
-
-        if(/202(312|401(0|1[0-8])).*/.test(file)){
-        // if(/20240122/.test(file)){
-            report_obj = await getDailyReportObj(`${HTML_DIR}/${file}`, report_obj);
-        }
+        report_obj = await getDailyReportObj(`${daily_input_path}/${file}`, report_obj);
     }
 
     // const file_path = 'html/20231225.html';
