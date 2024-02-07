@@ -4,3 +4,4 @@ r.sh
 config/local.json
 energy_prices
 .DS_Store
+config.sqfs
