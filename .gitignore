@@ -3,3 +3,4 @@ production_content
 r.sh
 config/local.json
 energy_prices
+.DS_Store
