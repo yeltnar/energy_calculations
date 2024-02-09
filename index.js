@@ -99,12 +99,7 @@ async function processSingleFile( file_path, energy_prices ){
   let csv_list = await fs.readdir(in_directory);
 
   // TODO change this to test function call
-  csv_list = csv_list.reduce((acc,c)=>{
-    if(/.csv$/i.test(c)){
-      acc.push(c);
-    }
-    return acc;
-  },[]);
+  csv_list = csv_list.filter(c=>/.csv$/i.test(c));
 
   for( let i=0; i<csv_list.length; i++ ){
     const file_path = `${in_directory}/${csv_list[i]}`;
