@@ -8,12 +8,32 @@ import {getProductionContent} from './getProductionContent.js'
 import {loadEnergyPrices} from './loadEnergyPrices.js'
 import Decimal from 'decimal.js';
 
+const bill_periods = (()=>{
+
+  // end dates should be the day after finish so math works out 
+  const periods = [
+    {
+      start: new Date('November 16, 2023').getTime(),
+      end: new Date('December 16, 2023').getTime(), // not sure why the dates overlap... maybe due to first bill 
+    },
+    {
+      start: new Date('December 16, 2023').getTime(),
+      end: new Date('Jan 18, 2024').getTime(), 
+    },
+    {
+      start: new Date('Jan 18, 2024').getTime(),
+      end: new Date('Feb 19, 2024').getTime(), 
+    }
+  ];
+
+  return periods;
+})();
+
 function timeoutPromise(ms){
   return new Promise((resolve, reject)=>{
     setTimeout(resolve,ms);
   }); 
 }
-
 
 const out_directory = "./out";
 
@@ -46,6 +66,7 @@ async function processSingleFile( file_path, energy_prices ){
   addTotalUsage(records_obj);
   invertField(records_obj, 'Consumption');
   addPrice(records_obj, energy_prices);
+  addBillPeriod(records_obj, bill_periods);
   // invertField(records_obj, 'Surplus Generation');
 
   let final_arr = getCSVArr(records_obj);
@@ -227,6 +248,23 @@ function addPrice(records_obj, energy_prices){
     }
   }
   return records_obj;
+}
+
+function addBillPeriod(records_obj, bill_periods){
+
+  for( let k in records_obj){
+    const record = records_obj[k];
+
+    // this logic will only take the latest bill period on the records object 
+    bill_periods.forEach(( bill_period )=>{
+      if( record.ms >= bill_period.start && record.ms < bill_period.end ){
+        bill_period.d = bill_period.d || [];
+        bill_period.d.push(record);
+        record.bill_period = bill_period.end; // maybe use start... use start everywhere else but not for bill periods 
+      }
+    });
+    
+  }
 }
 
 function getCSVArr(records_obj){
