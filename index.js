@@ -37,14 +37,14 @@ function timeoutPromise(ms){
 
 const out_directory = "./out";
 
-async function getMeterContent( file_path = process.argv[2] ){
+async function readMeterContentFromDisk( file_path = process.argv[2] ){
   // console.log(`file_path is ${file_path}`);
   return (await fs.readFile(file_path)).toString(); 
 }
 
-async function processSingleFile( file_path, energy_prices ){
+async function loadSingleDayMeterData( file_path, energy_prices ){
 
-  const input = await getMeterContent( file_path );
+  const input = await readMeterContentFromDisk( file_path );
 
   let records = parse(input, {
     columns: true,
@@ -55,33 +55,8 @@ async function processSingleFile( file_path, energy_prices ){
   firstFormat(records);
 
   const records_obj = listToObjSupplementData(records);
-  
-  // get simple date from smallest date 
-  const date_ms = parseInt(Object.keys(records_obj).sort()[0]);
-  const formatted_date = getSimpleMonth(date_ms)
-  
-  const production_obj = await getProductionContent(date_ms);
 
-  addRawProduction( records_obj, production_obj )
-  addTotalUsage(records_obj);
-  invertField(records_obj, 'Consumption');
-  addPrice(records_obj, energy_prices);
-  addBillPeriod(records_obj, bill_periods);
-  // invertField(records_obj, 'Surplus Generation');
-
-  let final_arr = getCSVArr(records_obj);
-  
-  // remove ms from final CSV
-  final_arr.forEach(c=>{
-    c.shift();
-  });
-  
-  // const date = getSimpleMonth(final_arr[1][0]);
-  fs.mkdir(`${out_directory}`).catch(()=>{});
-  const out_file = `${out_directory}/final_${formatted_date}.csv`;
-  // console.log(`writing to ${out_file}`);
-  const csv_content = stringify(final_arr);
-  fs.writeFile( `${out_file}` , csv_content );
+  return records_obj;
 }
 
 // main
@@ -93,25 +68,74 @@ async function processSingleFile( file_path, energy_prices ){
 
   const energy_prices = await loadEnergyPrices(); 
 
-  const num_results = 3;
-  await download_energy_report(in_directory, num_results);
+  // TODO add back 
+  // const num_results = 3;
+  // await download_energy_report(in_directory, num_results);
+  const records_obj = await loadMeterData( in_directory, energy_prices );
 
-  let csv_list = await fs.readdir(in_directory);
+  const date_ms_list = Object.keys(records_obj);
+  
+  const production_obj = await getProductionContent( date_ms_list );
 
-  // TODO change this to test function call
-  csv_list = csv_list.filter(c=>/.csv$/i.test(c));
+  console.log(production_obj);
 
-  for( let i=0; i<csv_list.length; i++ ){
-    const file_path = `${in_directory}/${csv_list[i]}`;
-    await processSingleFile( file_path, energy_prices ).catch(e=>{
-      console.error(e);
-      throw new Error(`error parsing file: ${csv_list[i]}`);
+  throw new Error(`need to change getProductionContent to work without a specific day`);
+
+  addRawProduction( records_obj, production_obj )
+  addTotalUsage(records_obj);
+  invertField(records_obj, 'Consumption');
+  addPrice(records_obj, energy_prices);
+  addBillPeriod(records_obj, bill_periods);
+  // invertField(records_obj, 'Surplus Generation');
+
+  throw new Error(`need to write to disk again. look below `);
+
+  (()=>{
+  
+    // get simple date from smallest date 
+    const date_ms = parseInt(Object.keys(records_obj).sort()[0]);
+    const formatted_date = getSimpleMonth(date_ms)
+    
+    let final_arr = getCSVArr(records_obj);
+    
+    // remove ms from final CSV
+    final_arr.forEach(c=>{
+      c.shift();
     });
-  }
+    
+    // const date = getSimpleMonth(final_arr[1][0]);
+    fs.mkdir(`${out_directory}`).catch(()=>{});
+    const out_file = `${out_directory}/final_${formatted_date}.csv`;
+    // console.log(`writing to ${out_file}`);
+    const csv_content = stringify(final_arr);
+    fs.writeFile( `${out_file}` , csv_content );
+  })();
+
 
   console.log('done');
   
 })();
+
+
+// TODO remove energy_prices
+async function loadMeterData( in_directory, energy_prices ){
+
+  let records_obj = {};
+
+  let csv_list = await fs.readdir(in_directory);
+  csv_list = csv_list.filter(c=>/.csv$/i.test(c));
+
+  for( let i=0; i<csv_list.length; i++ ){
+    const file_path = `${in_directory}/${csv_list[i]}`;
+    const local_records_obj = await loadSingleDayMeterData( file_path, energy_prices ).catch(e=>{
+      console.error(e);
+      throw new Error(`error parsing file: ${csv_list[i]}`);
+    });
+    records_obj = {...records_obj, ...local_records_obj};
+  }
+
+  return records_obj;
+}
 
 function getSimpleMonth(date_var){
 
@@ -253,6 +277,7 @@ function addBillPeriod(records_obj, bill_periods){
     // this logic will only take the latest bill period on the records object 
     bill_periods.forEach(( bill_period )=>{
       if( record.ms >= bill_period.start && record.ms < bill_period.end ){
+        // console.log(`${record.usage_time} --- ${bill_period.start} - ${record.ms} - ${bill_period.end}`);
         bill_period.d = bill_period.d || [];
         bill_period.d.push(record);
         record.bill_period = bill_period.end; // maybe use start... use start everywhere else but not for bill periods 

@@ -9,38 +9,49 @@ fs.mkdir(`${cache_directory}`).catch(()=>{});
 const site = config.site;
 const api_key = config.api_key; 
 
-export async function getProductionContent(date_ms){
+// gets usage by day, caching requests as it goes 
+export async function getProductionContent( date_ms_list ){
 
     // console.log(date_ms);
-    
-    const { year, month, day } = getMonthDeats(date_ms)
 
-    // TODO validate the month works 
+    let production_obj = {};
 
-    // const startTime = `${year}-${month}-${day}%2000:00:00`;
-    // const endTime = `${year}-${month}-${day}%2023:49:00`;
-    const startTime = `${year}-${month}-${day}`;
-    const endTime = `${year}-${month}-${day}`;
+    date_ms_list.forEach((date_ms)=>{
+        const { year, month, day } = getMonthDeats(parseFloat(date_ms))
+        const startTime = `${year}-${month}-${day}`;
+        const endTime = `${year}-${month}-${day}`;
 
-    const production_content = await requestProductionContent(site, api_key, startTime, endTime);
-    
-    // console.log(production_content);
-
-    const production = production_content.energy.values;
-    
-    const production_obj = {};
-    production.forEach((c)=>{
-      c.ms = new Date(c.date).getTime();
-      if(c.value===null){
-        c.value = 0;
-      }else{
-        c.value = parseFloat(c.value);
-      }
-      production_obj[c.ms] = c;
+        production_obj = getSingleProductionContent({startTime, endTime, production_obj});
     });
   
     return production_obj;
   } 
+
+const getSingleProductionContent = (() => {
+    const cache_table = {};
+
+    // we update production_obj and return it both
+    return async function getSingleProductionContent({ startTime, endTime, production_obj }) {
+
+        const production_content = await requestProductionContent(site, api_key, startTime, endTime);
+
+        const production = production_content.energy.values;
+
+        production.forEach((c) => {
+            c.ms = new Date(c.date).getTime();
+            if (c.value === null) {
+                c.value = 0;
+            } else {
+                c.value = parseFloat(c.value);
+            }
+            production_obj[c.ms] = c;
+        });
+
+        return production_obj;
+    }
+})();
+
+
 
 function timeoutPromise(ms){
     return new Promise((resolve, reject)=>{
@@ -111,13 +122,13 @@ function getMonthDeats(date_var){
     const day = d.getDate();
 
     if( Number.isNaN(year) ){
-        throw new Error(`getMonthDeats parsed year is NaN. date_var is ${date_var}`);
+        throw new Error(`getMonthDeats parsed year is NaN. date_var is ${date_var} ${typeof date_var}`);
     }
     if( Number.isNaN(month) ){
-        throw new Error(`getMonthDeats parsed month is NaN. date_var is ${date_var}`);
+        throw new Error(`getMonthDeats parsed month is NaN. date_var is ${date_var} ${typeof date_var}`);
     }
     if( Number.isNaN(day) ){
-        throw new Error(`getMonthDeats parsed day is NaN. date_var is ${date_var}`);
+        throw new Error(`getMonthDeats parsed day is NaN. date_var is ${date_var} ${typeof date_var}`);
     }
 
     return {
