@@ -12,17 +12,17 @@ const api_key = config.api_key;
 // gets usage by day, caching requests as it goes 
 export async function getProductionContent( date_ms_list ){
 
-    // console.log(date_ms);
-
     let production_obj = {};
 
-    date_ms_list.forEach((date_ms)=>{
+    for( let i=0; i<date_ms_list.length; i++ ){
+        const date_ms = date_ms_list[i];
+
         const { year, month, day } = getMonthDeats(parseFloat(date_ms))
         const startTime = `${year}-${month}-${day}`;
         const endTime = `${year}-${month}-${day}`;
 
-        production_obj = getSingleProductionContent({startTime, endTime, production_obj});
-    });
+        production_obj = await getSingleProductionContent({startTime, endTime, production_obj});
+    }
   
     return production_obj;
   } 
@@ -33,19 +33,26 @@ const getSingleProductionContent = (() => {
     // we update production_obj and return it both
     return async function getSingleProductionContent({ startTime, endTime, production_obj }) {
 
-        const production_content = await requestProductionContent(site, api_key, startTime, endTime);
+        const cache_key = `${startTime}-${endTime}`;
 
-        const production = production_content.energy.values;
+        if( cache_table[cache_key] === undefined ){
 
-        production.forEach((c) => {
-            c.ms = new Date(c.date).getTime();
-            if (c.value === null) {
-                c.value = 0;
-            } else {
-                c.value = parseFloat(c.value);
-            }
-            production_obj[c.ms] = c;
-        });
+            const production_content = await requestProductionContent(site, api_key, startTime, endTime);
+    
+            const production = production_content.energy.values;
+    
+            production.forEach((c) => {
+                c.ms = new Date(c.date).getTime();
+                if (c.value === null) {
+                    c.value = 0;
+                } else {
+                    c.value = parseFloat(c.value);
+                }
+                production_obj[c.ms] = c;
+            });
+
+            cache_table[cache_key] = true;
+        }
 
         return production_obj;
     }

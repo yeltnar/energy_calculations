@@ -77,10 +77,6 @@ async function loadSingleDayMeterData( file_path, energy_prices ){
   
   const production_obj = await getProductionContent( date_ms_list );
 
-  console.log(production_obj);
-
-  throw new Error(`need to change getProductionContent to work without a specific day`);
-
   addRawProduction( records_obj, production_obj )
   addTotalUsage(records_obj);
   invertField(records_obj, 'Consumption');
@@ -88,13 +84,15 @@ async function loadSingleDayMeterData( file_path, energy_prices ){
   addBillPeriod(records_obj, bill_periods);
   // invertField(records_obj, 'Surplus Generation');
 
+  await fs.writeFile('/tmp/large.json',JSON.stringify(records_obj,null,2));
+
   throw new Error(`need to write to disk again. look below `);
 
   (()=>{
   
     // get simple date from smallest date 
     const date_ms = parseInt(Object.keys(records_obj).sort()[0]);
-    const formatted_date = getSimpleMonth(date_ms)
+    const formatted_date = getSimpleMonth(date_ms);
     
     let final_arr = getCSVArr(records_obj);
     
@@ -190,7 +188,7 @@ function listToObjSupplementData(records){
     }
     records_obj[key]._og_data[type] = c
     records_obj[key][type] = parseFloat(c.USAGE_KWH);
-
+    records_obj[key].usage_date = c.USAGE_DATE;
   });
 
   for( let key in records_obj){
