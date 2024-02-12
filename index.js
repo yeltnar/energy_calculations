@@ -42,7 +42,7 @@ async function readMeterContentFromDisk( file_path = process.argv[2] ){
   return (await fs.readFile(file_path)).toString(); 
 }
 
-async function loadSingleDayMeterData( file_path, energy_prices ){
+async function loadSingleDayMeterData( file_path ){
 
   const input = await readMeterContentFromDisk( file_path );
 
@@ -69,8 +69,8 @@ async function loadSingleDayMeterData( file_path, energy_prices ){
   const energy_prices = await loadEnergyPrices(); 
 
   // TODO add back 
-  // const num_results = 3;
-  // await download_energy_report(in_directory, num_results);
+  const num_results = 3;
+  await download_energy_report(in_directory, num_results);
   const records_obj = await loadMeterData( in_directory, energy_prices );
 
   const date_ms_list = Object.keys(records_obj);
@@ -114,9 +114,7 @@ async function loadSingleDayMeterData( file_path, energy_prices ){
   
 })();
 
-
-// TODO remove energy_prices
-async function loadMeterData( in_directory, energy_prices ){
+async function loadMeterData( in_directory ){
 
   let records_obj = {};
 
@@ -125,7 +123,7 @@ async function loadMeterData( in_directory, energy_prices ){
 
   for( let i=0; i<csv_list.length; i++ ){
     const file_path = `${in_directory}/${csv_list[i]}`;
-    const local_records_obj = await loadSingleDayMeterData( file_path, energy_prices ).catch(e=>{
+    const local_records_obj = await loadSingleDayMeterData( file_path ).catch(e=>{
       console.error(e);
       throw new Error(`error parsing file: ${csv_list[i]}`);
     });

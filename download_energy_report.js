@@ -138,21 +138,14 @@ async function download_energy_report(out_dir=`./in_csv`, num_results=3){
     // console.log({api_url,account_id});
     await inboxIdQuery(api_url, account_id).then(async(inbox_id) => {
       await mailboxQuery(api_url, account_id, inbox_id, num_results).then(async(emails) => {
-        // fs.writeFile('out.json',JSON.stringify(emails,null,2));
         
         const to_wait = emails["methodResponses"][1][1]["list"].map(async (email) => {
-
-          // const account_id=;
-          const { blobId, name, type }=email.attachments[0];
-          // const access_token=jmap_token;
-
-          await downloadFile({ account_id, blobId, name, type, out_dir });
-
-          // console.log({
-          //   email,
-          // });
-
-          // console.log(`${email.receivedAt} — ${email.subject}`);
+          
+          // download all the attachments 
+          for ( let i=0; i<email.attachments.length; i++ ){
+            const { blobId, name, type }=email.attachments[i];            
+            await downloadFile({ account_id, blobId, name, type, out_dir });
+          }
         });
         await Promise.all(to_wait);
       });
@@ -163,8 +156,8 @@ async function download_energy_report(out_dir=`./in_csv`, num_results=3){
     
     const out_path = `${out_dir}/${name}`;
 
+    // Test if file is ther, otherwise download it 
     try{
-      
       const saved_file = await fs.readFile(out_path);
       // console.log(`file \'${out_path}\' found; not downloading`);
       return saved_file.toString();
