@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "enc_start": "./mount_config.sh; node index.js; ./unmount_config.sh"
+    "enc_start": "./mount_config.sh; node index.js; ./unmount_config.sh",
+    "nodemon": "npx nodemon --ignore ./out start"
   },
   "type": "module",
   "author": "",

@@ -65,10 +65,10 @@ async function getDailyReportObj(file_path, report_obj={}){
         });
     });
 
-    report_obj = csv_arr.reduce((acc, cur, row_index)=>{
+    report_obj = csv_arr.reduce((acc, cur_row, row_index)=>{
 
         if( row_index===0 ){
-            cur.forEach(( cur, column_index )=>{
+            cur_row.forEach(( cur, column_index )=>{
                 if( column_index===0 || column_index===1 ){return} // don't add metadata columns
                 // if(cur!==DESIRED_ZONE){return;} // only deal with my zone 
                 if( acc[cur]===undefined ){
@@ -76,7 +76,7 @@ async function getDailyReportObj(file_path, report_obj={}){
                 }
             });
         }else{
-            const new_data = cur.forEach((cur, i, row_arr)=>{
+            const new_data = cur_row.forEach((cur, i, row_arr)=>{
                 if( i===0 || i===1 ){return} // don't add metadata columns
                 const key = csv_arr[0][i]; // this is the zone
 
@@ -93,7 +93,9 @@ async function getDailyReportObj(file_path, report_obj={}){
                 }
 
                 let settlement_point_price = new Decimal(cur);
-                const settlement_point_price_dollar_kwh = (new Decimal(cur)).dividedBy(1000);
+                const settlement_point_price_dollar_kwh_uncapped = settlement_point_price.dividedBy(1000);
+                let settlement_point_price_dollar_kwh = settlement_point_price.dividedBy(1000);
+
                 let data = {
                     delivery_date,
                     delivery_hour,
@@ -101,12 +103,12 @@ async function getDailyReportObj(file_path, report_obj={}){
                     settlement_point_name: DESIRED_ZONE,
                     settlement_point_price,
                     settlement_point_price_dollar_kwh,
+                    settlement_point_price_dollar_kwh_uncapped,
                     _src_data:{
                         delivery_date,
                         interval_ending,
                     }
                 };
-
 
                 data = suplimentRecord(data);
 

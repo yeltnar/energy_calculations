@@ -28,9 +28,11 @@ export default function suplimentRecord(cur){
         // console.log(cur.settlement_point_price);
         // process.exit();
 
-        cur.settlement_point_price_dollar_kwh = new Decimal(cur.settlement_point_price).dividedBy(1000);
+        cur.settlement_point_price_dollar_kwh_uncapped = new Decimal(cur.settlement_point_price).dividedBy(1000);
         delete cur.settlement_point_type;
-        delete cur.repeated_hour_flag;
+        delete cur.repeated_hour_flag;    
+        
+        cur.settlement_point_price_dollar_kwh = cur.settlement_point_price_dollar_kwh_uncapped > .25 ? new Decimal(.25) : cur.settlement_point_price_dollar_kwh_uncapped;
 
         return {
             date_str,

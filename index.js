@@ -8,21 +8,24 @@ import {getProductionContent} from './getProductionContent.js'
 import {loadEnergyPrices} from './loadEnergyPrices.js'
 import Decimal from 'decimal.js';
 
+const ENERGY_PRICE = new Decimal('0.1364637826');
+
 const bill_periods = (()=>{
 
+  // start dates should be the day after cuz they don't look at the that day
   // end dates should be the day after finish so math works out 
   const periods = [
     {
       start: new Date('November 16, 2023').getTime(),
-      end: new Date('December 16, 2023').getTime(), // not sure why the dates overlap... maybe due to first bill 
+      end: new Date('December 16, 2023').getTime(), 
     },
     {
-      start: new Date('December 16, 2023').getTime(),
-      end: new Date('Jan 18, 2024').getTime(), 
+      start: new Date('December 17, 2023').getTime(),
+      end: new Date('Jan 19, 2024').getTime(), 
     },
     {
-      start: new Date('Jan 18, 2024').getTime(),
-      end: new Date('Feb 19, 2024').getTime(), 
+      start: new Date('Jan 20, 2024').getTime(),
+      end: new Date('Feb 20, 2024').getTime(), 
     }
   ];
 
@@ -73,42 +76,151 @@ async function loadSingleDayMeterData( file_path ){
   await download_energy_report(in_directory, num_results);
   const records_obj = await loadMeterData( in_directory, energy_prices );
 
-  const date_ms_list = Object.keys(records_obj);
   
-  const production_obj = await getProductionContent( date_ms_list );
+  const date_list = Object.keys(records_obj).reduce(( acc, key )=>{
+    const cur = records_obj[key];
+    const time = cur.usage_date;
+    if( acc.indexOf(time)<0 ){
+      acc.push(time);
+    }
+    return acc;
+  },[]);
+
+  const production_obj = await getProductionContent( date_list );
 
   addRawProduction( records_obj, production_obj )
   addTotalUsage(records_obj);
   invertField(records_obj, 'Consumption');
   addPrice(records_obj, energy_prices);
   addBillPeriod(records_obj, bill_periods);
-  // invertField(records_obj, 'Surplus Generation');
-
-  await fs.writeFile('/tmp/large.json',JSON.stringify(records_obj,null,2));
-
-  throw new Error(`need to write to disk again. look below `);
-
-  (()=>{
   
-    // get simple date from smallest date 
-    const date_ms = parseInt(Object.keys(records_obj).sort()[0]);
-    const formatted_date = getSimpleMonth(date_ms);
-    
-    let final_arr = getCSVArr(records_obj);
-    
-    // remove ms from final CSV
-    final_arr.forEach(c=>{
-      c.shift();
-    });
-    
-    // const date = getSimpleMonth(final_arr[1][0]);
-    fs.mkdir(`${out_directory}`).catch(()=>{});
-    const out_file = `${out_directory}/final_${formatted_date}.csv`;
-    // console.log(`writing to ${out_file}`);
-    const csv_content = stringify(final_arr);
-    fs.writeFile( `${out_file}` , csv_content );
-  })();
+  // TODO move out of this function block 
+  async function writeRecordsCSVandJSON({records_obj, start, end, dir, name}){
+    const csv_path = `${dir}/${name}.csv`;
+    const json_path = `${dir}/${name}.json`;
 
+    const cur_records_obj = await getRecordsRange({records_obj, start, end});
+        
+    let final_arr = getCSVArr(cur_records_obj);
+    const csv_content = stringify(final_arr);
+
+    return await Promise.all([
+      await fs.writeFile( csv_path , csv_content ),
+      await fs.writeFile( json_path , JSON.stringify(cur_records_obj,null,2) ),
+    ])
+  }
+
+  // write with all data 
+  await writeRecordsCSVandJSON({
+    dir:"./out",
+    name:'all',
+    records_obj, 
+    start:0, 
+    end:(new Date('Jan 01 3024').getTime()),
+  });
+
+  // bill_periods
+  const to_wait = bill_periods.map(async(cur)=>{
+
+    const name = getSimpleMonth(cur.end);
+
+    const total_earned = await (async()=>{      
+      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+      let to_return = 0;
+      for (let k in cur_records_obj ){
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].earned)).toNumber()
+      }
+      return to_return;
+    })();
+
+    const total_consumption = await (async()=>{      
+      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+      let to_return = 0;
+      for (let k in cur_records_obj ){
+        if(cur_records_obj[k].Consumption===undefined){
+          throw new Error(`cur_records_obj[k].Consumption is undefined`);
+        }
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].Consumption));
+      }
+      return to_return.toNumber();
+    })();
+
+    const total_total_usage = await (async()=>{      
+      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+      let to_return = 0;
+      for (let k in cur_records_obj ){
+        if(cur_records_obj[k].total_usage===undefined){
+          throw new Error(`cur_records_obj[k].total_usage is undefined`);
+        }
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].total_usage));
+      }
+      return to_return.toNumber();
+    })();
+
+    const total_surplus_generation = await (async()=>{      
+      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+      let to_return = 0;
+      for (let k in cur_records_obj ){
+        if(cur_records_obj[k]['Surplus Generation']===undefined){
+          throw new Error(`cur_records_obj[k]['Surplus Generation'] is undefined`);
+        }
+        to_return = (new Decimal(to_return).add(cur_records_obj[k]['Surplus Generation']));
+      }
+      return to_return.toNumber();
+    })();
+
+    const total_raw_production = await (async()=>{      
+      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+      let to_return = 0;
+      for (let k in cur_records_obj ){
+        if(cur_records_obj[k].raw_production===undefined){
+          throw new Error(`cur_records_obj[k].raw_production is undefined`);
+        }
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].raw_production));
+      }
+      return to_return.toNumber();
+    })();
+
+    const total_spend = await (async()=>{      
+      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+      let to_return = 0;
+      for (let k in cur_records_obj ){
+        if(cur_records_obj[k].spend===undefined){
+          throw new Error(`cur_records_obj[k].spend is undefined`);
+        }
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].spend));
+      }
+      // to_return.add(9.95).add(3.59); // TODO factor in base charges 
+      return to_return.toNumber();
+    })();
+
+    const gross_consumption = new Decimal(total_total_usage).add(total_raw_production).toNumber();
+    const gross_spend = new Decimal(total_earned).add(total_spend).toNumber();
+
+    console.log({
+      period_ending: new Date(cur.end).toString(),
+      gross_consumption,
+      total_total_usage,
+      total_raw_production,
+      total_consumption,
+      total_surplus_generation,
+      total_earned,
+      total_spend,
+      gross_spend,
+    });
+
+    // create csv and json
+    await writeRecordsCSVandJSON({
+      dir:"./out",
+      name,
+      records_obj, 
+      start: cur.start, 
+      end: cur.end,
+    }); 
+
+  });
+
+  await Promise.all(to_wait);
 
   console.log('done');
   
@@ -186,7 +298,9 @@ function listToObjSupplementData(records){
     }
     records_obj[key]._og_data[type] = c
     records_obj[key][type] = parseFloat(c.USAGE_KWH);
-    records_obj[key].usage_date = c.USAGE_DATE;
+    
+    const arr = c.USAGE_DATE.split('/');    
+    records_obj[key].usage_date = `${arr[2]}-${arr[0]}-${arr[1]}`;
   });
 
   for( let key in records_obj){
@@ -251,7 +365,10 @@ function addPrice(records_obj, energy_prices){
 
     if( price_obj!==undefined ){
       records_obj[k].price = price_obj.settlement_point_price_dollar_kwh.toNumber();
+      records_obj[k].price_uncapped = price_obj.settlement_point_price_dollar_kwh_uncapped.toNumber();
       records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['Surplus Generation']).toNumber();
+      // TODO read this from dynamic location 
+      records_obj[k].spend = ENERGY_PRICE.times(records_obj[k]['Consumption']);
     }else{
       console.error({
         msg:'price undefined',
@@ -259,6 +376,7 @@ function addPrice(records_obj, energy_prices){
       })
       records_obj[k].price = NaN;
       records_obj[k].earned = NaN;
+      records_obj[k].spend = NaN;
       
     }
   }
@@ -272,7 +390,8 @@ function addBillPeriod(records_obj, bill_periods){
 
     // this logic will only take the latest bill period on the records object 
     bill_periods.forEach(( bill_period )=>{
-      if( record.ms >= bill_period.start && record.ms < bill_period.end ){
+      // if( record.ms >= bill_period.start && record.ms < bill_period.end ){
+      if( bill_period.start < record.ms && record.ms <= bill_period.end ){
         // console.log(`${record.usage_time} --- ${bill_period.start} - ${record.ms} - ${bill_period.end}`);
         bill_period.d = bill_period.d || [];
         bill_period.d.push(record);
@@ -283,11 +402,22 @@ function addBillPeriod(records_obj, bill_periods){
   }
 }
 
+async function getRecordsRange({records_obj, start, end }){
+  const to_return = {};
+  for( let k in records_obj ){
+    const {ms} = records_obj[k];
+    if( start <= ms && ms < end ){
+      to_return[k] = records_obj[k];
+    }
+  }
+  return to_return;
+}
+
 function getCSVArr(records_obj){
 
-  let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned', 'price'];
-  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned', 'price'];
-  let final_arr = [column_headers];
+  let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned', 'price_uncapped', 'price'];
+  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned', 'price_uncapped', 'price'];
+  let final_arr = [];
   for ( let k in records_obj){
     const new_record = []; // line starts with the ms line 
     
@@ -316,6 +446,8 @@ function getCSVArr(records_obj){
 
     return a[0] - b[0];
   });
+
+  final_arr.unshift(column_headers);
 
   return final_arr;
 }

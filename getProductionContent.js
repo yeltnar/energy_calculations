@@ -10,16 +10,16 @@ const site = config.site;
 const api_key = config.api_key; 
 
 // gets usage by day, caching requests as it goes 
-export async function getProductionContent( date_ms_list ){
+export async function getProductionContent( date_str_list ){
 
     let production_obj = {};
 
-    for( let i=0; i<date_ms_list.length; i++ ){
-        const date_ms = date_ms_list[i];
+    for( let i=0; i<date_str_list.length; i++ ){
+        const date_str = date_str_list[i];
 
-        const { year, month, day } = getMonthDeats(parseFloat(date_ms))
-        const startTime = `${year}-${month}-${day}`;
-        const endTime = `${year}-${month}-${day}`;
+        const { year, month, day } = getMonthDeats(parseFloat(date_str))
+        const startTime = date_str;
+        const endTime = date_str;
 
         production_obj = await getSingleProductionContent({startTime, endTime, production_obj});
     }
@@ -118,7 +118,6 @@ function getCacheName(site, startTime, endTime){
 
     return `${cache_directory}/${site}_${startTime}_${endTime}`;
 }
-
 
 function getMonthDeats(date_var){
 
