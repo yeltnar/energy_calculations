@@ -6,7 +6,7 @@ import config from 'config';
 
 import download_energy_report from './download_energy_report.js';
 import {getProductionContent} from './getProductionContent.js'
-import {loadEnergyPrices} from './loadEnergyPrices.js'
+import {loadEnergyPrices, downloadPricingHistoryArr} from './loadEnergyPrices.js'
 import Decimal from 'decimal.js';
 
 const ENERGY_PRICE = new Decimal('0.1364637826');
@@ -69,14 +69,15 @@ async function loadSingleDayMeterData( file_path ){
   console.log('start');
   
   const in_directory = './in_csv';
-
+  
   const energy_prices = await loadEnergyPrices(); 
-
+  console.log({ep:energy_prices[1706766300000]});
+  
   if( config.check_email === true ){
     const num_results = 3;
     await download_energy_report(in_directory, num_results);
   }
-
+  
   const records_obj = await loadMeterData( in_directory, energy_prices );
   
   const date_list = Object.keys(records_obj).reduce(( acc, key )=>{
@@ -88,12 +89,16 @@ async function loadSingleDayMeterData( file_path ){
     return acc;
   },[]);
 
+  const energy_prices_v2 = await downloadPricingHistoryArr( date_list );
+
+  console.log({ep:energy_prices_v2[1706766300000]});
+
   const production_obj = await getProductionContent( date_list );
 
   addRawProduction( records_obj, production_obj )
   addTotalUsage(records_obj);
   invertField(records_obj, 'Consumption');
-  addPrice(records_obj, energy_prices);
+  addPrice(records_obj, energy_prices_v2);
   addBillPeriod(records_obj, bill_periods);
   
   // TODO move out of this function block 

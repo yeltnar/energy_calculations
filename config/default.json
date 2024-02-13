@@ -4,5 +4,6 @@
     "num_results":10,
     "JMAP_TOKEN":"",
     "check_email":true,
-    "print_bill_period_results":true
+    "print_bill_period_results":true,
+    "download_pricing_history":false
 }
