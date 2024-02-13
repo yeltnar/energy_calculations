@@ -2,5 +2,7 @@
     "site":"",
     "api_key":"",
     "num_results":10,
-    "JMAP_TOKEN":""
+    "JMAP_TOKEN":"",
+    "check_email":true,
+    "print_bill_period_results":true
 }

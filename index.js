@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 import fs from 'fs/promises';
+import config from 'config';
 
 import download_energy_report from './download_energy_report.js';
 import {getProductionContent} from './getProductionContent.js'
@@ -71,11 +72,12 @@ async function loadSingleDayMeterData( file_path ){
 
   const energy_prices = await loadEnergyPrices(); 
 
-  // TODO add back 
-  const num_results = 3;
-  await download_energy_report(in_directory, num_results);
-  const records_obj = await loadMeterData( in_directory, energy_prices );
+  if( config.check_email === true ){
+    const num_results = 3;
+    await download_energy_report(in_directory, num_results);
+  }
 
+  const records_obj = await loadMeterData( in_directory, energy_prices );
   
   const date_list = Object.keys(records_obj).reduce(( acc, key )=>{
     const cur = records_obj[key];
@@ -197,17 +199,19 @@ async function loadSingleDayMeterData( file_path ){
     const gross_consumption = new Decimal(total_total_usage).add(total_raw_production).toNumber();
     const gross_spend = new Decimal(total_earned).add(total_spend).toNumber();
 
-    console.log({
-      period_ending: new Date(cur.end).toString(),
-      gross_consumption,
-      total_total_usage,
-      total_raw_production,
-      total_consumption,
-      total_surplus_generation,
-      total_earned,
-      total_spend,
-      gross_spend,
-    });
+    if( config.print_bill_period_results === true ){
+      console.log({
+        period_ending: new Date(cur.end).toString(),
+        gross_consumption,
+        total_total_usage,
+        total_raw_production,
+        total_consumption,
+        total_surplus_generation,
+        total_earned,
+        total_spend,
+        gross_spend,
+      });
+    }
 
     // create csv and json
     await writeRecordsCSVandJSON({
