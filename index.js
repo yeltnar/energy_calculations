@@ -70,15 +70,14 @@ async function loadSingleDayMeterData( file_path ){
   
   const in_directory = './in_csv';
   
-  const energy_prices = await loadEnergyPrices(); 
-  console.log({ep:energy_prices[1706766300000]});
+  const energy_prices_v1 = await loadEnergyPrices(); 
   
   if( config.check_email === true ){
     const num_results = 3;
     await download_energy_report(in_directory, num_results);
   }
   
-  const records_obj = await loadMeterData( in_directory, energy_prices );
+  const records_obj = await loadMeterData( in_directory );
   
   const date_list = Object.keys(records_obj).reduce(( acc, key )=>{
     const cur = records_obj[key];
@@ -90,15 +89,14 @@ async function loadSingleDayMeterData( file_path ){
   },[]);
 
   const energy_prices_v2 = await downloadPricingHistoryArr( date_list );
-
-  console.log({ep:energy_prices_v2[1706766300000]});
+  const energy_prices = {...energy_prices_v1, ...energy_prices_v2};
 
   const production_obj = await getProductionContent( date_list );
 
   addRawProduction( records_obj, production_obj )
   addTotalUsage(records_obj);
   invertField(records_obj, 'Consumption');
-  addPrice(records_obj, energy_prices_v2);
+  addPrice(records_obj, energy_prices);
   addBillPeriod(records_obj, bill_periods);
   
   // TODO move out of this function block 
@@ -131,18 +129,26 @@ async function loadSingleDayMeterData( file_path ){
 
     const name = getSimpleMonth(cur.end);
 
+    const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+    console.log(cur_records_obj)
+
     const total_earned = await (async()=>{      
-      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
       let to_return = 0;
       for (let k in cur_records_obj ){
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].earned)).toNumber()
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].earned)).toNumber();
+        if(  Number.isNaN(to_return) ){
+          throw new Error(`found NaN\n${JSON.stringify({
+            earned: cur_records_obj[k].earned,
+            k,
+            date: new Date(parseFloat(k)).toString(),
+          },null,2)}`)
+        }
       }
       return to_return;
     })();
 
     const total_consumption = await (async()=>{      
-      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
-      let to_return = 0;
+      let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].Consumption===undefined){
           throw new Error(`cur_records_obj[k].Consumption is undefined`);
@@ -153,8 +159,7 @@ async function loadSingleDayMeterData( file_path ){
     })();
 
     const total_total_usage = await (async()=>{      
-      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
-      let to_return = 0;
+      let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].total_usage===undefined){
           throw new Error(`cur_records_obj[k].total_usage is undefined`);
@@ -165,20 +170,15 @@ async function loadSingleDayMeterData( file_path ){
     })();
 
     const total_surplus_generation = await (async()=>{      
-      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
-      let to_return = 0;
+      let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
-        if(cur_records_obj[k]['Surplus Generation']===undefined){
-          throw new Error(`cur_records_obj[k]['Surplus Generation'] is undefined`);
-        }
-        to_return = (new Decimal(to_return).add(cur_records_obj[k]['Surplus Generation']));
+        to_return = (new Decimal(to_return).add(cur_records_obj[k]['Surplus Generation'] || 0));
       }
       return to_return.toNumber();
     })();
 
     const total_raw_production = await (async()=>{      
-      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
-      let to_return = 0;
+      let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].raw_production===undefined){
           throw new Error(`cur_records_obj[k].raw_production is undefined`);
@@ -189,8 +189,7 @@ async function loadSingleDayMeterData( file_path ){
     })();
 
     const total_spend = await (async()=>{      
-      const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
-      let to_return = 0;
+      let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].spend===undefined){
           throw new Error(`cur_records_obj[k].spend is undefined`);
@@ -229,7 +228,7 @@ async function loadSingleDayMeterData( file_path ){
 
   });
 
-  await Promise.all(to_wait);
+  await Promise.all(to_wait); 
 
   console.log('done');
   
@@ -248,7 +247,9 @@ async function loadMeterData( in_directory ){
       console.error(e);
       throw new Error(`error parsing file: ${csv_list[i]}`);
     });
-    records_obj = {...records_obj, ...local_records_obj};
+
+      records_obj[k] = {...records_obj[k], ...local_records_obj[k]}
+      
   }
 
   return records_obj;
@@ -312,22 +313,6 @@ function listToObjSupplementData(records){
     records_obj[key].usage_date = `${arr[2]}-${arr[0]}-${arr[1]}`;
   });
 
-  for( let key in records_obj){
-
-    if( records_obj[key]._og_data === undefined ){
-      console.error('aa!!!');
-      process.exit(-1);
-    }
-    if( records_obj[key]._og_data['Surplus Generation'] === undefined ){
-      // fill in 0 production if needed 
-      records_obj[key]._og_data['Surplus Generation'] = JSON.parse(JSON.stringify(records_obj[key]._og_data['Consumption']));
-      records_obj[key]._og_data['Surplus Generation'].CONSUMPTION_SURPLUSGENERATION = 'Surplus Generation';
-      records_obj[key]._og_data['Surplus Generation'].REVISION_DATE = 'NA';
-      records_obj[key]._og_data['Surplus Generation'].USAGE_KWH = "0";
-      records_obj[key]._og_data['Surplus Generation'].ESTIMATED_ACTUAL = 'A';
-      records_obj[key]['Surplus Generation'] = 0;
-    }
-  }
   return records_obj;
 }
 
@@ -375,13 +360,18 @@ function addPrice(records_obj, energy_prices){
     if( price_obj!==undefined ){
       records_obj[k].price = price_obj.settlement_point_price_dollar_kwh.toNumber();
       records_obj[k].price_uncapped = price_obj.settlement_point_price_dollar_kwh_uncapped.toNumber();
-      records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['Surplus Generation']).toNumber();
+      records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['Surplus Generation'] || 0).toNumber();
+      if(null===records_obj[k].earned){
+        throw new Error('bad');
+      }
       // TODO read this from dynamic location 
       records_obj[k].spend = ENERGY_PRICE.times(records_obj[k]['Consumption']);
     }else{
       console.error({
         msg:'price undefined',
         o: records_obj[k].usage_time,
+        ms,
+        k,
       })
       records_obj[k].price = NaN;
       records_obj[k].earned = NaN;
