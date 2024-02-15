@@ -1,4 +1,3 @@
-import assert from 'node:assert';
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 import fs from 'fs/promises';
@@ -13,22 +12,44 @@ const ENERGY_PRICE = new Decimal('0.1364637826');
 
 const bill_periods = (()=>{
 
+  function addOneDay( date_str ){
+    const date_obj = new Date(date_str);
+    const day = date_obj.getDate()+1; // add one cuz bill is odd 
+    const month = date_obj.getMonth()+1; // JS months are weird 
+    const year = date_obj.getFullYear();
+    const str = `${month}/${day}/${year}`;
+    const new_date = new Date(str);
+    const new_ms = new_date.getTime();
+    return new_ms;
+  }
+
   // start dates should be the day after cuz they don't look at the that day
   // end dates should be the day after finish so math works out 
-  const periods = [
+  const _desired_periods = [
     {
-      start: new Date('November 16, 2023').getTime(),
-      end: new Date('December 16, 2023').getTime(), 
+      start: 'November 15, 2023',
+      end: 'December 16, 2023',
     },
     {
-      start: new Date('December 17, 2023').getTime(),
-      end: new Date('Jan 19, 2024').getTime(), 
+      start: 'December 16, 2023',
+      end: 'Jan 18, 2024',
     },
     {
-      start: new Date('Jan 20, 2024').getTime(),
-      end: new Date('Feb 20, 2024').getTime(), 
+      start: 'Jan 19, 2024',
+      end: 'Feb 20, 2024',
+    },
+    {
+      start: 'Jan 11, 2024',
+      end: 'Jan 12, 2024',
     }
   ];
+
+  // fix bill periods to real periods 
+  const periods = _desired_periods.map((cur)=>{
+    cur.start = addOneDay(cur.start);
+    cur.end = addOneDay(cur.end);
+    return cur;
+  });
 
   return periods;
 })();
@@ -130,7 +151,6 @@ async function loadSingleDayMeterData( file_path ){
     const name = getSimpleMonth(cur.end);
 
     const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
-    console.log(cur_records_obj)
 
     const total_earned = await (async()=>{      
       let to_return = 0;
@@ -200,6 +220,7 @@ async function loadSingleDayMeterData( file_path ){
       return to_return.toNumber();
     })();
 
+    const avg_earned = new Decimal(total_earned).dividedBy(total_surplus_generation);
     const gross_consumption = new Decimal(total_total_usage).add(total_raw_production).toNumber();
     const gross_spend = new Decimal(total_earned).add(total_spend).toNumber();
 
@@ -214,6 +235,7 @@ async function loadSingleDayMeterData( file_path ){
         total_earned,
         total_spend,
         gross_spend,
+        avg_earned,
       });
     }
 
@@ -248,8 +270,10 @@ async function loadMeterData( in_directory ){
       throw new Error(`error parsing file: ${csv_list[i]}`);
     });
 
+    for ( let k in local_records_obj ){
       records_obj[k] = {...records_obj[k], ...local_records_obj[k]}
       
+    }
   }
 
   return records_obj;
@@ -310,6 +334,7 @@ function listToObjSupplementData(records){
     records_obj[key][type] = parseFloat(c.USAGE_KWH);
     
     const arr = c.USAGE_DATE.split('/');    
+    arr[2] = arr[2].length<4?"20"+arr[2]:arr[2];
     records_obj[key].usage_date = `${arr[2]}-${arr[0]}-${arr[1]}`;
   });
 
@@ -373,6 +398,7 @@ function addPrice(records_obj, energy_prices){
         ms,
         k,
       })
+      throw new Error('bad energy price'); // TODO remove 
       records_obj[k].price = NaN;
       records_obj[k].earned = NaN;
       records_obj[k].spend = NaN;

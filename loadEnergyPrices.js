@@ -18,24 +18,27 @@ export async function downloadPricingHistoryArr( date_list ){
 
     let x = await Promise.all(wait_list);    
     x = x.reduce((acc,row)=>{
-        row.forEach(( c )=>{
-            let settlement_point_price = new Decimal(c.settlementPointPrice);
-            const settlement_point_price_dollar_kwh_uncapped = settlement_point_price.dividedBy(1000);
-            let settlement_point_price_dollar_kwh = settlement_point_price.dividedBy(1000);
 
-            let data = {
-                delivery_date: c.deliveryDate,
-                delivery_hour: c.deliveryHour,
-                delivery_interval: c.deliveryInterval,
-                settlement_point_name: c.settlementPoint,
-                settlement_point_price: c.settlementPointPrice,
-                settlement_point_price_dollar_kwh,
-                settlement_point_price_dollar_kwh_uncapped,
-            };
-            data = suplimentRecord(data);
+        if(row!==undefined){
+            row.forEach(( c )=>{
+                let settlement_point_price = new Decimal(c.settlementPointPrice);
+                const settlement_point_price_dollar_kwh_uncapped = settlement_point_price.dividedBy(1000);
+                let settlement_point_price_dollar_kwh = settlement_point_price.dividedBy(1000);
 
-            acc[data.date_ms] = data;
-        });
+                let data = {
+                    delivery_date: c.deliveryDate,
+                    delivery_hour: c.deliveryHour,
+                    delivery_interval: c.deliveryInterval,
+                    settlement_point_name: c.settlementPoint,
+                    settlement_point_price: c.settlementPointPrice,
+                    settlement_point_price_dollar_kwh,
+                    settlement_point_price_dollar_kwh_uncapped,
+                };
+                data = suplimentRecord(data);
+
+                acc[data.date_ms] = data;
+            });
+        }
         return acc;
     },{});
 
@@ -55,6 +58,12 @@ async function downloadPricingHistory({ deliveryDateFrom, deliveryDateTo }){
 const cache_dir = `./energy_prices/tmp`;
 async function downloadSinglePricingHistoryCached({ deliveryDateFrom, deliveryDateTo, settlementPoint, settlementPointType, page=1 }){
 
+    // don't try 2023 results 
+    const regex_test = /2023/;
+    if( regex_test.test(deliveryDateFrom) || regex_test.test(deliveryDateTo) ){
+        return;
+    }
+
     // console.log(`downloadSinglePricingHistoryCached page ${page}`)
 
     const file_path = `${cache_dir}/${deliveryDateFrom}_${deliveryDateTo}_${page}.json`;
@@ -64,7 +73,14 @@ async function downloadSinglePricingHistoryCached({ deliveryDateFrom, deliveryDa
         raw_ercot_data = JSON.parse((await fs.readFile(file_path)).toString());
     }catch(e){
         console.log(`downloading for ${file_path}`);
-        raw_ercot_data = await downloadSinglePricingHistory({ deliveryDateFrom, deliveryDateTo, settlementPoint, settlementPointType, page  });
+        raw_ercot_data = await (downloadSinglePricingHistory({ deliveryDateFrom, deliveryDateTo, settlementPoint, settlementPointType, page  })
+        .catch(e=>{
+            console.error(`!!! downloadSinglePricingHistory error downloading ercot data ${deliveryDateFrom}_${deliveryDateTo} ${e}`);
+            return undefined;
+        }));
+        if(raw_ercot_data===undefined){
+            return undefined;
+        }
         await fs.writeFile(file_path, JSON.stringify(raw_ercot_data) );
         console.log(`wrote to ${file_path}`);
     }
@@ -104,7 +120,7 @@ let pricing_que = [];
 async function downloadSinglePricingHistory({ deliveryDateFrom, deliveryDateTo, settlementPoint, settlementPointType, page  }){
 
     if( page===undefined ){
-        throw new Error('currentPage undefined: downloadSinglePricingHistory')
+        throw new Error('page undefined: downloadSinglePricingHistory')
     }
 
     const base = `https://api.ercot.com/api/public-reports/np6-905-cd/spp_node_zone_hub`;
@@ -123,8 +139,8 @@ async function downloadSinglePricingHistory({ deliveryDateFrom, deliveryDateTo, 
         x = (await new_promise).data;
     }catch(e){
         console.error({url});
-        await fs.writeFile('/tmp/axios_error',e.toString());
-        throw new Error('axios error downloading ercot data');
+        await fs.writeFile('/tmp/axios_error '+new Date().toString(),e.toString());
+        throw e;
     }
 
     return x;
