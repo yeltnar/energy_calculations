@@ -25,27 +25,10 @@ const bill_periods = (()=>{
 
   // start dates should be the day after cuz they don't look at the that day
   // end dates should be the day after finish so math works out 
-  const _desired_periods = [
-    {
-      start: 'November 15, 2023',
-      end: 'December 16, 2023',
-    },
-    {
-      start: 'December 16, 2023',
-      end: 'Jan 18, 2024',
-    },
-    {
-      start: 'Jan 19, 2024',
-      end: 'Feb 20, 2024',
-    },
-    {
-      start: 'Jan 11, 2024',
-      end: 'Jan 12, 2024',
-    }
-  ];
+  // bill_periods
 
   // fix bill periods to real periods 
-  const periods = _desired_periods.map((cur)=>{
+  const periods = config.bill_periods.map((cur)=>{
     cur.start = addOneDay(cur.start);
     cur.end = addOneDay(cur.end);
     return cur;
@@ -226,7 +209,8 @@ async function loadSingleDayMeterData( file_path ){
 
     if( config.print_bill_period_results === true ){
       console.log({
-        period_ending: new Date(cur.end).toString(),
+        period_start: new Date(cur.start).toString(),
+        period_end: new Date(cur.end).toString(),
         gross_consumption,
         total_total_usage,
         total_raw_production,
