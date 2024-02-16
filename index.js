@@ -30,7 +30,7 @@ const bill_periods = (()=>{
   // fix bill periods to real periods 
   const periods = config.bill_periods.map((cur)=>{
     cur.start = addOneDay(cur.start);
-    cur.end = addOneDay(cur.end);
+    cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
     return cur;
   });
 
