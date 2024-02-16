@@ -99,7 +99,7 @@ async function loadSingleDayMeterData( file_path ){
 
   addRawProduction( records_obj, production_obj )
   addTotalUsage(records_obj);
-  invertField(records_obj, 'Consumption');
+  invertField(records_obj, 'consumption');
   addPrice(records_obj, energy_prices);
   addBillPeriod(records_obj, bill_periods);
   
@@ -153,10 +153,10 @@ async function loadSingleDayMeterData( file_path ){
     const total_consumption = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
-        if(cur_records_obj[k].Consumption===undefined){
-          throw new Error(`cur_records_obj[k].Consumption is undefined`);
+        if(cur_records_obj[k].consumption===undefined){
+          throw new Error(`cur_records_obj[k].consumption is undefined`);
         }
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].Consumption));
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].consumption));
       }
       return to_return.toNumber();
     })();
@@ -175,7 +175,7 @@ async function loadSingleDayMeterData( file_path ){
     const total_surplus_generation = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
-        to_return = (new Decimal(to_return).add(cur_records_obj[k]['Surplus Generation'] || 0));
+        to_return = (new Decimal(to_return).add(cur_records_obj[k]['surplus_generation'] || 0));
       }
       return to_return.toNumber();
     })();
@@ -203,7 +203,7 @@ async function loadSingleDayMeterData( file_path ){
       return to_return.toNumber();
     })();
 
-    const avg_earned = new Decimal(total_earned).dividedBy(total_surplus_generation);
+    const avg_earned = new Decimal(total_earned).dividedBy(total_surplus_generation).toNumber();
     const gross_consumption = new Decimal(total_total_usage).add(total_raw_production).toNumber();
     const gross_spend = new Decimal(total_earned).add(total_spend).toNumber();
 
@@ -298,7 +298,7 @@ function listToObjSupplementData(records){
   records.forEach((c)=>{
     
     const key = c.USAGE_MS;
-    const type = c.CONSUMPTION_SURPLUSGENERATION;
+    const type = fixType(c.CONSUMPTION_SURPLUSGENERATION);
 
     // initalize if undefined 
     if ( records_obj[key] === undefined ){
@@ -325,6 +325,16 @@ function listToObjSupplementData(records){
   return records_obj;
 }
 
+function fixType( type ){
+  if( type === "Surplus Generation" ){
+    return 'surplus_generation';
+  }if( type === "Consumption" ){
+    return 'consumption';
+  }else{
+    throw new Error('unknown type for fixType');
+  }
+}
+
 function addRawProduction( records_obj, production_obj ){
 
   for( let k in records_obj ){
@@ -346,8 +356,8 @@ function addTotalUsage(records_obj){
     const c = records_obj[k];
     c.total_usage = new Decimal(c.raw_production)
       .times(-1)
-      .add( c['Surplus Generation'] || 0 )
-      .sub( c['Consumption'] || 0 )
+      .add( c['surplus_generation'] || 0 )
+      .sub( c['consumption'] || 0 )
       .toNumber();
   }
 
@@ -369,12 +379,12 @@ function addPrice(records_obj, energy_prices){
     if( price_obj!==undefined ){
       records_obj[k].price = price_obj.settlement_point_price_dollar_kwh.toNumber();
       records_obj[k].price_uncapped = price_obj.settlement_point_price_dollar_kwh_uncapped.toNumber();
-      records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['Surplus Generation'] || 0).toNumber();
+      records_obj[k].earned = price_obj.settlement_point_price_dollar_kwh.times(records_obj[k]['surplus_generation'] || 0).toNumber();
       if(null===records_obj[k].earned){
         throw new Error('bad');
       }
       // TODO read this from dynamic location 
-      records_obj[k].spend = ENERGY_PRICE.times(records_obj[k]['Consumption']);
+      records_obj[k].spend = ENERGY_PRICE.times(records_obj[k]['consumption']);
     }else{
       console.error({
         msg:'price undefined',
@@ -424,8 +434,9 @@ async function getRecordsRange({records_obj, start, end }){
 
 function getCSVArr(records_obj){
 
+  // TODO only need one array now
   let column_headers = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned', 'price_uncapped', 'price'];
-  let key_values = ['ms', 'usage_time', 'Surplus Generation', 'Consumption', 'raw_production', 'total_usage', 'earned', 'price_uncapped', 'price'];
+  let key_values     = ['ms', 'usage_time', 'surplus_generation', 'consumption', 'raw_production', 'total_usage', 'earned', 'price_uncapped', 'price'];
   let final_arr = [];
   for ( let k in records_obj){
     const new_record = []; // line starts with the ms line 
@@ -433,7 +444,7 @@ function getCSVArr(records_obj){
     key_values.forEach((c)=>{
       let to_push = records_obj[k][c];
       
-      if(c==='Surplus Generation' && to_push===undefined){
+      if(c==='surplus_generation' && to_push===undefined){
         to_push = 0;
       }
 
