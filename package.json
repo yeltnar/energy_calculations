@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "enc_start": "./mount_config.sh; node index.js; ./unmount_config.sh",
+    "start": "node index.js | tee log.log",
+    "enc_start": "./mount_config.sh; npm start; ./unmount_config.sh",
     "nodemon": "npx nodemon --ignore ./out --ignore ./energy_prices/tmp/ start"
   },
   "type": "module",
