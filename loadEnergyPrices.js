@@ -11,6 +11,9 @@ const daily_input_path = './energy_prices/daily';
 
 export async function downloadPricingHistoryArr( date_list ){
 
+    // TODO fix this... ercot added auth but no docs on how to use it
+    return {};
+
     const wait_list = date_list.map(async(cur)=>{
         const r = await downloadPricingHistory( { deliveryDateFrom:cur, deliveryDateTo:cur } );
         return r;

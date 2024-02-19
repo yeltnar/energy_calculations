@@ -8,6 +8,7 @@ import {getProductionContent} from './getProductionContent.js'
 import {loadEnergyPrices, downloadPricingHistoryArr} from './loadEnergyPrices.js'
 import Decimal from 'decimal.js';
 
+// TODO make dynamic
 const ENERGY_PRICE = new Decimal('0.1364637826');
 
 const bill_periods = (()=>{
@@ -150,6 +151,22 @@ async function loadSingleDayMeterData( file_path ){
       return to_return;
     })();
 
+    const oppo_earned = await (async()=>{
+      let to_return = new Decimal(total_earned);
+      for (let k in cur_records_obj ){
+        to_return = to_return.add(cur_records_obj[k].saved);
+        if(  Number.isNaN(to_return) ){
+          throw new Error(`found NaN\n${JSON.stringify({
+            saved: cur_records_obj[k].saved,
+            k,
+            date: new Date(parseFloat(k)).toString(),
+          },null,2)}`)
+        }
+      }
+      return to_return.toNumber();
+      
+    })();
+
     const total_consumption = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
@@ -161,7 +178,7 @@ async function loadSingleDayMeterData( file_path ){
       return to_return.toNumber();
     })();
 
-    const total_total_usage = await (async()=>{      
+    const gross_usage = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].total_usage===undefined){
@@ -204,7 +221,7 @@ async function loadSingleDayMeterData( file_path ){
     })();
 
     const avg_earned = new Decimal(total_earned).dividedBy(total_surplus_generation).toNumber();
-    const gross_consumption = new Decimal(total_total_usage).add(total_raw_production).toNumber();
+    const gross_consumption = new Decimal(gross_usage).add(total_raw_production).toNumber();
     const gross_spend = new Decimal(total_earned).add(total_spend).toNumber();
 
     if( config.print_bill_period_results === true ){
@@ -212,11 +229,12 @@ async function loadSingleDayMeterData( file_path ){
         period_start: new Date(cur.start).toString(),
         period_end: new Date(cur.end).toString(),
         gross_consumption,
-        total_total_usage,
+        gross_usage,
         total_raw_production,
         total_consumption,
         total_surplus_generation,
         total_earned,
+        oppo_earned,
         total_spend,
         gross_spend,
         avg_earned,
@@ -340,7 +358,7 @@ function addRawProduction( records_obj, production_obj ){
   for( let k in records_obj ){
     // divide by 1000 to convert to KWh 
     const production = production_obj[k].value;
-    if(!production && production!==0){
+    if(!production && production!==0){ // TODO this is meaningless 
       console.error({production});
       console.log('production is zero');
     }
@@ -383,8 +401,17 @@ function addPrice(records_obj, energy_prices){
       if(null===records_obj[k].earned){
         throw new Error('bad');
       }
-      // TODO read this from dynamic location 
       records_obj[k].spend = ENERGY_PRICE.times(records_obj[k]['consumption']);
+
+      // note: raw production is 0 regardless of if panels were recording or not, per the API 
+      if( records_obj[k].surplus_generation !== undefined ){ // We want to only account for days when we have surplus generation data
+        let meter_side_use = new Decimal(records_obj[k].raw_production).minus(records_obj[k].surplus_generation).toNumber();
+        meter_side_use = meter_side_use < 0 ? 0 : meter_side_use; // if the meter and solar generation disagree, force to zero (likely close any way)
+        records_obj[k].meter_side_use = meter_side_use;
+        records_obj[k].saved = ENERGY_PRICE.times(meter_side_use);
+      }else{
+        records_obj[k].saved = 0;
+      }
     }else{
       console.error({
         msg:'price undefined',
