@@ -220,6 +220,20 @@ async function loadSingleDayMeterData( file_path ){
       return to_return.toNumber();
     })();
 
+    const {earliest_obj, latest_obj} = await(async()=>{
+      let earliest_obj = {ms:Number.MAX_VALUE};
+      let latest_obj = {ms:0};
+      for(let k in cur_records_obj){
+        if( cur_records_obj[k].ms > latest_obj.ms ){
+          latest_obj = cur_records_obj[k];
+        }
+        if( cur_records_obj[k].ms < earliest_obj.ms ){
+          earliest_obj = cur_records_obj[k];
+        }
+      }
+      return {earliest_obj,latest_obj};
+    })();
+
     const avg_earned = new Decimal(total_earned).dividedBy(total_surplus_generation).toNumber();
     const gross_consumption = new Decimal(gross_usage).add(total_raw_production).toNumber();
     const gross_spend = new Decimal(total_earned).add(total_spend).toNumber();
@@ -228,6 +242,8 @@ async function loadSingleDayMeterData( file_path ){
       console.log({
         period_start: new Date(cur.start).toString(),
         period_end: new Date(cur.end).toString(),
+        earliest_record: earliest_obj.usage_time,
+        latest_record: latest_obj.usage_time,
         gross_consumption,
         gross_usage,
         total_raw_production,
