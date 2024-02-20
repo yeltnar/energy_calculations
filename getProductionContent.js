@@ -37,21 +37,24 @@ const getSingleProductionContent = (() => {
 
         if( cache_table[cache_key] === undefined ){
 
-            const production_content = await requestProductionContent(site, api_key, startTime, endTime);
-    
-            const production = production_content.energy.values;
-    
-            production.forEach((c) => {
-                c.ms = new Date(c.date).getTime();
-                if (c.value === null) {
-                    c.value = 0;
-                } else {
-                    c.value = parseFloat(c.value);
-                }
-                production_obj[c.ms] = c;
-            });
+            const {production_content,skip} = await requestProductionContent(site, api_key, startTime, endTime);
 
-            cache_table[cache_key] = true;
+            if(skip===false){
+        
+                const production = production_content.energy.values;
+        
+                production.forEach((c) => {
+                    c.ms = new Date(c.date).getTime();
+                    if (c.value === null) {
+                        c.value = 0;
+                    } else {
+                        c.value = parseFloat(c.value);
+                    }
+                    production_obj[c.ms] = c;
+                });
+
+                cache_table[cache_key] = true;
+            }
         }
 
         return production_obj;
@@ -68,8 +71,11 @@ async function requestProductionContent(site, api_key, startTime, endTime){
 
     let final_wait = (async()=>{})()
 
+    const use_network = config.site !== undefined && config.api_key !==undefined && config.check_solaredge!==false;
+    let skip = false;
+
     let to_return = await getCachedProductionData(site, startTime, endTime);
-    if( to_return === false ){
+    if( to_return === false && use_network===true  ){
 
         const timeUnit="QUARTER_OF_AN_HOUR";
 
@@ -93,8 +99,21 @@ async function requestProductionContent(site, api_key, startTime, endTime){
 
     }
 
+    if( use_network === false && to_return === false){
+        console.log({
+            "msg": 'skipping network request',
+            // site: config.site,
+            // api_key: config.api_key,
+            check_solaredge: config.check_solaredge,
+        })
+        skip = true;
+    }
+
     await final_wait; // wait for a bit so we don't get rate limited, if made network request
-    return to_return;
+    return {
+        production_content: to_return,
+        skip,
+    }
 }
 
 async function getCachedProductionData(site, startTime, endTime){

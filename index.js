@@ -373,12 +373,13 @@ function addRawProduction( records_obj, production_obj ){
 
   for( let k in records_obj ){
     // divide by 1000 to convert to KWh 
-    const production = production_obj[k].value;
-    if(!production && production!==0){ // TODO this is meaningless 
-      console.error({production});
-      console.log('production is zero');
+
+    if( production_obj[k]!==undefined ){
+      const production = production_obj[k].value;
+      records_obj[k].raw_production = new Decimal(production).dividedBy(1000).toNumber(); 
+    }else{
+      records_obj[k].raw_production = 0; 
     }
-    records_obj[k].raw_production = new Decimal(production).dividedBy(1000).toNumber(); 
   }
 
   return records_obj;
