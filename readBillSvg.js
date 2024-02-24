@@ -197,23 +197,20 @@ async function getEnergyCharge(document){
 }
 
 async function getStartTime( document ){
-    const fixed_rate_text = await getSpecialLine(document);
-    const regex = /(.*) -/;
-
-    const to_return = regex.exec(fixed_rate_text.innerHTML)[1];
-
-    return to_return;
+    let date_ele = await (textEleSearch('Bill Period', document.querySelector('svg')).catch((e) => {
+        console.error(e);
+    }));
+    const regex = /- (.*) thru/;
+    const date = regex.exec(date_ele.innerHTML)[1]
+    return date;
 }
 async function getEndTime( document ){
-    const fixed_rate_text = await getSpecialLine(document);
-    const regex = / - (.*) F/;
-
-    const to_return = regex.exec(fixed_rate_text.innerHTML)[1];
-    // console.log(to_return);
-    // process.exit();
-
-    return to_return;
-
+    let date_ele = await (textEleSearch('Bill Period', document.querySelector('svg')).catch((e) => {
+        console.error(e);
+    }));
+    const regex = /thru  ?(.*)$/;
+    const date = regex.exec(date_ele.innerHTML)[1]
+    return date;
 }
 
 export async function getBillData(file_path){
