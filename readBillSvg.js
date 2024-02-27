@@ -256,7 +256,7 @@ async function getSingleBillData(file_path){
 export async function getBillData(){
 
     const dir = './bills/svgs';
-    const file_list = await fs.readdir(dir);
+    const file_list = (await fs.readdir(dir)).filter(c=>/svg$/.test(c));
 
     const to_return = [];
     // return to_return;// TODO remove 
