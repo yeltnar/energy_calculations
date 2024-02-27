@@ -174,6 +174,15 @@ async function getOncorRate(document, energy_usage) {
     return new Decimal(price).dividedBy(energy_usage).toNumber();
 }
 
+async function getOncorPrice(document) {
+    const x = await textEleSearch('Oncor Delivery Charges', document.querySelector('svg'));
+    const new_search_top = x.parentNode.parentNode.parentNode.parentNode.parentNode.nextElementSibling;
+    const x2 = await textEleSearch('\$', new_search_top);
+    const price_str = x2.innerHTML.split('$').join("");
+    const price = parseFloat(price_str);
+    return price;
+}
+
 async function getBaseFee(document) {
     const x = await textEleSearch('Base Fee', document.querySelector('svg'));
     const new_search_top = x.parentNode.parentNode.parentNode.parentNode.parentNode.nextElementSibling;
@@ -213,7 +222,7 @@ async function getEndTime( document ){
     return date;
 }
 
-export async function getBillData(file_path){
+async function getSingleBillData(file_path){
     let html = (await fs.readFile(file_path)).toString();
     const root = htmlParse(html);
 
@@ -225,31 +234,44 @@ export async function getBillData(file_path){
 
     const ercot_rate = await getErcotRate(root);
     const oncor_rate = await getOncorRate(root,energy_usage);
+    const oncor_price = await getOncorPrice(root,energy_usage);
     const base_fee = await getBaseFee(root);
 
-    const start_time = await getStartTime(root);
-    const end_time = await getEndTime(root);
+    const start = await getStartTime(root);
+    const end = await getEndTime(root);
     const energy_charge = await getEnergyCharge(root, special_line);
 
     return {
-        start_time,
-        end_time,
+        start,
+        end,
         energy_usage,
         ercot_rate,
         oncor_rate,
+        oncor_price,
         base_fee: base_fee,
+        from_bill: true, 
         energy_charge,
     };
 }
 
-; (async () => {
+export async function getBillData(){
 
-    const dir = './svgs';
+    const dir = './bills/svgs';
     const file_list = await fs.readdir(dir);
 
+    const to_return = [];
+    // return to_return;// TODO remove 
+
     for( let i in file_list){
-        const file_shit = await getBillData(`${dir}/${file_list[i]}`)
-        console.log(file_shit);
+        const bill_data = await getSingleBillData(`${dir}/${file_list[i]}`)
+        // console.log(bill_data);
+        to_return.push(bill_data);
     }
 
-})();
+    return to_return;
+}
+
+// (async()=>{
+//     const x = await getBillData();
+//     console.log(x);
+// })();
