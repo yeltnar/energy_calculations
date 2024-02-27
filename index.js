@@ -348,7 +348,7 @@ async function loadSingleDayMeterData( file_path ){
           // bill_energy_price,
           // energy_charge,
           // ercot_charge,
-          oncor_delivery,
+          // oncor_delivery,
           // base_fee,
         }
       });
