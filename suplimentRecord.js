@@ -25,8 +25,6 @@ export default function suplimentRecord(cur){
         if( !Decimal.isDecimal(cur.settlement_point_price) ){
             cur.settlement_point_price = new Decimal(parseFloat(cur.settlement_point_price));
         }
-        // console.log(cur.settlement_point_price);
-        // process.exit();
 
         cur.settlement_point_price_dollar_kwh_uncapped = new Decimal(cur.settlement_point_price).dividedBy(1000);
         delete cur.settlement_point_type;

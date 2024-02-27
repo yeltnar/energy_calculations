@@ -105,7 +105,6 @@ const textEleSearch = (() => {
             // neither -> check normal body
             const check_children = shouldCheckChildren(tester, top_element, options);
             if ( check_children===true ) {
-                // process.exit();
                 filtered_descendants = await filterChildren(top_element.childNodes);
                 if (filtered_descendants.length === 0) {
                     filtered_descendants = [top_element] // if children don't match, set to self // make an array so the next line couple of lines work out

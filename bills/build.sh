@@ -1,0 +1,1 @@
+docker build -t convert-pdf-svg .

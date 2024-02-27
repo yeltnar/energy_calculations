@@ -15,8 +15,6 @@ const GROSS_RECEIPT_TAX_REIMBURSEMENT = 0.01997;
 // TODO make dynamic
 const ENERGY_PRICE = new Decimal('0.1364637826');
 
-
-
 function timeoutPromise(ms){
   return new Promise((resolve, reject)=>{
     setTimeout(resolve,ms);
@@ -72,8 +70,9 @@ async function loadSingleDayMeterData( file_path ){
     let proto_bill_periods = [
       // add 'all' bill period 
       {
-        "start": "Jan 1, 2000",
-        "end": "December 15, 2999"
+        "start": "0",
+        "end": new Date().getTime(),
+        is_abstract: true,
       },
       ...config.bill_periods,
       ...svg_bill_periods,
@@ -81,6 +80,8 @@ async function loadSingleDayMeterData( file_path ){
   
     // fix bill periods to real periods 
     let periods = proto_bill_periods.map((cur)=>{
+      cur._in_start = cur.start;
+      cur._in_end = cur.end;
       cur.start = addOneDay(cur.start);
       cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
       return cur;
@@ -94,7 +95,6 @@ async function loadSingleDayMeterData( file_path ){
       acc.forEach((added_ele)=>{
         if( cur.start===added_ele.start && cur.end===added_ele.end ){
           should_add=false;
-          console.log('should add is false')
         }
       });
       
@@ -105,32 +105,33 @@ async function loadSingleDayMeterData( file_path ){
       return acc;
     },[]);
 
-    const latest_bill_obj = (()=>{
-      let latest_date = -1;
-      let cur_latest = -1;
-      svg_bill_periods.forEach((cur, i, arr)=>{
-        if(cur.from_bill===true && cur.end > latest_date){
-          latest_date = cur.end;
-          cur_latest = cur;
-        }
-      })
-      return cur_latest;
-    })();
     // add latest bill period
     (()=>{
+      const latest_bill_obj = (()=>{
+        let latest_date = -1;
+        let cur_latest = -1;
+        svg_bill_periods.forEach((cur, i, arr)=>{
+          if(cur.from_bill===true && cur.end > latest_date){
+            latest_date = cur.end;
+            cur_latest = cur;
+          }
+        })
+        return cur_latest;
+      })();
+      const end_obj = new Date();
+      const start = latest_bill_obj.end ? latest_bill_obj.end : 0;
+      const end = end_obj.getTime();
       const to_push = {
         ...latest_bill_obj,
-        start: latest_bill_obj.end,
-        end: new Date().getTime(),
+        start,
+        end,
+        _in_start: new Date(start).toString(),
+        _in_end: new Date(end).toString(),
       }
       delete to_push.energy_usage;
       delete to_push.from_bill;
-      delete to_push.oncor_price;
       periods.push(to_push);
     })();
-
-    // console.log(periods);
-    // process.exit();
   
     return periods;
   })();
@@ -202,22 +203,21 @@ async function loadSingleDayMeterData( file_path ){
     const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
 
     const energy_charge  = cur.energy_charge;
-    const ercot_charge = cur.ercot_charge;
-    const oncor_delivery = cur.oncor_delivery;
+    const ercot_rate = cur.ercot_rate;
+    const oncor_rate = cur.oncor_rate;
     let base_fee = cur.base_fee;
 
     if(base_fee===undefined){
       base_fee = 0;
     }
 
-    const total_creadit_earned = await (async()=>{      
-      let to_return = 0;
-      let skip_count = 0;
+    const total_credit_earned = await (async()=>{      
+      let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         
-        if(cur_records_obj[k].earned===undefined){skip_count++;continue;}
+        if(cur_records_obj[k].earned===undefined ){continue;}
 
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].earned)).toNumber();
+        to_return = (to_return.add(cur_records_obj[k].earned));
         if(  Number.isNaN(to_return) ){
           throw new Error(`found NaN\n${JSON.stringify({
             earned: cur_records_obj[k].earned,
@@ -226,9 +226,7 @@ async function loadSingleDayMeterData( file_path ){
           },null,2)}`)
         }
       }
-      console.log(skip_count);
-      process.exit();
-      return to_return;
+      return to_return.toNumber();
     })();
 
     const oppo_earned = await (async()=>{
@@ -251,7 +249,7 @@ async function loadSingleDayMeterData( file_path ){
       
     })();
 
-    const total_earned_toward_solar = new Decimal(oppo_earned).add(total_creadit_earned).toNumber();
+    const total_earned_toward_solar = new Decimal(oppo_earned).add(total_credit_earned).toNumber();
 
     const total_consumption = await (async()=>{      
       let to_return = new Decimal(0);
@@ -304,16 +302,16 @@ async function loadSingleDayMeterData( file_path ){
       return to_return.toNumber();
     })();
 
-    const total_oncor_delivery = await (async()=>{      
+    const total_oncor_price = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
-        if(cur_records_obj[k].oncor_delivery===undefined){continue;}
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].oncor_delivery));
+        if(cur_records_obj[k].oncor_price===undefined){continue;}
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].oncor_price));
       }
       return to_return.toNumber();
     })();
 
-    const total_energy_charge = await (async()=>{      
+    const total_energy_charge = await (async()=>{   
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].energy_charge===undefined){continue;}
@@ -321,7 +319,7 @@ async function loadSingleDayMeterData( file_path ){
       }
       return to_return.toNumber();
     })();
-
+    
     let total_charge_no_tax = await (()=>{ 
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
@@ -336,11 +334,11 @@ async function loadSingleDayMeterData( file_path ){
     total_charge_no_tax = new Decimal(total_charge_no_tax)
                           .minus(base_fee); // minus cuz of how positive/negitive works out 
 
-    const total_ercot_charge = await (async()=>{      
+    const total_ercot_price = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
-        if(cur_records_obj[k].ercot_charge===undefined){continue;}
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].ercot_charge));
+        if(cur_records_obj[k].ercot_price===undefined){continue;}
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].ercot_price));
       }
       // to_return.add(9.95).add(3.59); // TODO factor in base charges 
       return to_return.toNumber();
@@ -360,9 +358,9 @@ async function loadSingleDayMeterData( file_path ){
       return {earliest_obj,latest_obj};
     })();
 
-    const avg_earned = new Decimal(total_creadit_earned).dividedBy(total_surplus_generation).toNumber();
+    const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     const gross_consumption = new Decimal(gross_usage).add(total_raw_production).toNumber();
-    const gross_spend = new Decimal(total_creadit_earned).add(total_spend).toNumber();
+    const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();
 
     const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
     const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();
@@ -371,7 +369,7 @@ async function loadSingleDayMeterData( file_path ){
       new Decimal(gross_receipt_tax_reimbursement_price)
       .add(pcu_rate_price)
       .add(total_charge_no_tax)
-      .add(total_creadit_earned) // add earned after calculating price of taxes // positive is in your favor 
+      .add(total_credit_earned) // add earned after calculating price of taxes // positive is in your favor 
       .toNumber();
 
     if( config.print_bill_period_results === true ){
@@ -388,13 +386,13 @@ async function loadSingleDayMeterData( file_path ){
           "total raw production": total_raw_production,
           "taken from grid: total_consumption":total_consumption,
           "sent to grid: total_surplus_generation":total_surplus_generation,
-          "credit earned: total_creadit_earned":total_creadit_earned,
+          "credit earned: total_credit_earned":total_credit_earned,
 
           "tax1 gross_receipt_tax_reimbursement":gross_receipt_tax_reimbursement_price,
           "tax2 pcu_rate":pcu_rate_price,
           "energy provider charge: total_energy_charge":total_energy_charge,
-          "oncor charge: total_oncor_delivery":total_oncor_delivery,
-          "ercot charge: total_ercot_charge":total_ercot_charge,
+          "oncor charge: total_oncor_price":total_oncor_price,
+          "ercot charge: total_ercot_price":total_ercot_price,
           "to be charged to card: total_charge": total_charge,
           
           "total amount earned by not buying from grid: oppo_earned":oppo_earned,
@@ -404,14 +402,10 @@ async function loadSingleDayMeterData( file_path ){
           // "_______________":"______________________________",
           // "total amount earned by not buying from grid: oppo_earned":oppo_earned,
           // "earned toward solar: total_earned_toward_solar":total_earned_toward_solar,
+          total_ercot_price
         },
         avg_earned,
         new_ones:{
-          // bill_energy_price,
-          // energy_charge,
-          // ercot_charge,
-          // oncor_delivery,
-          // base_fee,
         }
       });
     }
@@ -567,24 +561,28 @@ function addPrice(records_obj, energy_prices){
 
   for( let k in records_obj ){
 
-    if(records_obj[k].ercot_charge===undefined){
+    
+    if(records_obj[k].ercot_price===undefined){
       // console.log(records_obj[k]);
-      // throw new Error('records_obj[k].ercot_charge');
+      // throw new Error('records_obj[k].ercot_price');
+      records_obj[k].missing_ercot_price = true;
+      records_obj[k].skipped_price = "ercot_price is missing";
       continue;
     }
     if(records_obj[k].energy_charge===undefined){
-      // console.log(records_obj[k]);
-      // throw new Error('records_obj[k].energy_charge');
+      throw new Error('records_obj[k].energy_charge');
+      records_obj[k].skipped_price = "energy_charge is missing";
       continue;
     }
-    if(records_obj[k].oncor_delivery===undefined){
+    if(records_obj[k].oncor_price===undefined){
       // console.log(records_obj[k]);
-      // throw new Error('records_obj[k].oncor_delivery');
+      // throw new Error('records_obj[k].oncor_price');
+      records_obj[k].skipped_price = "oncor_price is missing";
       continue;
     }
 
     // records_obj[k].
-    const bill_energy_price = new Decimal(records_obj[k].energy_charge).add(records_obj[k].ercot_charge).add(records_obj[k].oncor_delivery);
+    const bill_energy_price = new Decimal(records_obj[k].energy_charge).add(records_obj[k].ercot_price).add(records_obj[k].oncor_price);
 
     const ms = records_obj[k].ms;
     const price_obj = energy_prices[ms];
@@ -633,12 +631,12 @@ function addTotalChargeNoTax( records_obj ){
   for( let k in records_obj){
     const record = records_obj[k];
 
-    if( record.energy_charge===undefined || record.oncor_delivery===undefined || record.ercot_charge===undefined ){
+    if( record.energy_charge===undefined || record.oncor_price===undefined || record.ercot_price===undefined ){
       record.charge_no_tax = 0;  
     }else{
       record.charge_no_tax = new Decimal(record.energy_charge)
-      .add(record.oncor_delivery)
-      .add(record.ercot_charge)
+      .add(record.oncor_price)
+      .add(record.ercot_price)
     }
       
   }
@@ -651,6 +649,9 @@ function addBillPeriod(records_obj, bill_periods){
 
     // this logic will only take the latest bill period on the records object 
     bill_periods.forEach(( bill_period )=>{
+
+      if(bill_period.is_abstract===true){return;}
+
       // if( record.ms >= bill_period.start && record.ms < bill_period.end ){
       if( bill_period.start <= record.ms && record.ms <= bill_period.end ){
         // console.log(`${record.usage_time} --- ${bill_period.start} - ${record.ms} - ${bill_period.end}`);
@@ -660,15 +661,17 @@ function addBillPeriod(records_obj, bill_periods){
         if( bill_period.end !== undefined){
           record.bill_period = bill_period.end; // maybe use start... use start everywhere else but not for bill periods 
         }
-
-        if( bill_period.energy_charge !== undefined){
+        if( record.energy_charge===undefined && bill_period.energy_charge !== undefined){
           record.energy_charge = new Decimal(record.consumption).times(bill_period.energy_charge);
         }
-        if( bill_period.ercot_charge !== undefined){
-          record.ercot_charge = new Decimal(record.consumption).times(bill_period.ercot_charge);
+
+        // we calculate price from rate
+        if( record.ercot_price===undefined && bill_period.ercot_rate !== undefined){
+          record.ercot_price = new Decimal(record.consumption).times(bill_period.ercot_rate);
         }
-        if( bill_period.oncor_delivery !== undefined){
-          record.oncor_delivery = new Decimal(record.consumption).times(bill_period.oncor_delivery);
+        // we calculate price from rate
+        if( record.oncor_price===undefined && bill_period.oncor_rate !== undefined){
+          record.oncor_price = new Decimal(record.consumption).times(bill_period.oncor_rate);
         }
       }
     });    
@@ -739,6 +742,6 @@ function getBaseFee( cur_records_obj ){
   }
 
   console.log('----- did not find base fee');
-  process.exit();
+  process.exit(-1);
 }
 

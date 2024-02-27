@@ -27,8 +27,6 @@ export async function getDailyEnergyPrice(daily_input_path, cur_price_obj){
 }
 async function readDailyEnergyCSV(daily_input_path){
     let html_files = await fs.readdir(daily_input_path);
-    // console.log(JSON.stringify(html_files,null,2));
-    // return process.exit();
 
     html_files = html_files.filter(c=>/\.html$/i.test(c));
 
