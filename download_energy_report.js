@@ -175,7 +175,6 @@ async function download_energy_report(out_dir=`./in_csv`, num_results=3){
       'Authorization':`Bearer ${bearer_token}`
     }
 
-    // TODO change to cached request
     const response = await fetch(download_url, {
       method: "POST",
       headers,
@@ -183,7 +182,6 @@ async function download_energy_report(out_dir=`./in_csv`, num_results=3){
 
     const attachment_content = await response.text();
 
-    // console.log({out_path});
     await fs.writeFile( out_path, attachment_content );
 
     return attachment_content;

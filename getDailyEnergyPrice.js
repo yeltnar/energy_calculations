@@ -110,6 +110,7 @@ async function getDailyReportObj(file_path, report_obj={}){
                     }
                 };
 
+                // This is where we cap the price at 25 cents
                 data = suplimentRecord(data);
 
                 acc[key].push(data);
