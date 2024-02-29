@@ -262,6 +262,7 @@ async function loadSingleDayMeterData( file_path ){
       return to_return.toNumber();
     })();
 
+    // sum of total usage 
     const gross_usage = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
@@ -340,7 +341,6 @@ async function loadSingleDayMeterData( file_path ){
         if(cur_records_obj[k].ercot_price===undefined){continue;}
         to_return = (new Decimal(to_return).add(cur_records_obj[k].ercot_price));
       }
-      // to_return.add(9.95).add(3.59); // TODO factor in base charges 
       return to_return.toNumber();
     })();
 
@@ -359,7 +359,10 @@ async function loadSingleDayMeterData( file_path ){
     })();
 
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
+    
+    // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
     const gross_consumption = new Decimal(gross_usage).add(total_raw_production).toNumber();
+    
     const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();
 
     const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
@@ -372,44 +375,6 @@ async function loadSingleDayMeterData( file_path ){
       .add(total_credit_earned) // add earned after calculating price of taxes // positive is in your favor 
       .toNumber();
 
-    if( config.print_bill_period_results === true ){
-      console.log({
-        times:{
-          period_start: new Date(cur.start).toString(),
-          period_end: new Date(cur.end).toString(),
-          earliest_record: earliest_obj.usage_time,
-          latest_record: latest_obj.usage_time,
-        },
-        info:{
-          // gross_consumption,
-          // gross_usage,
-          "total raw production": total_raw_production,
-          "taken from grid: total_consumption":total_consumption,
-          "sent to grid: total_surplus_generation":total_surplus_generation,
-          "credit earned: total_credit_earned":total_credit_earned,
-
-          "tax1 gross_receipt_tax_reimbursement":gross_receipt_tax_reimbursement_price,
-          "tax2 pcu_rate":pcu_rate_price,
-          "energy provider charge: total_energy_charge":total_energy_charge,
-          "oncor charge: total_oncor_price":total_oncor_price,
-          "ercot charge: total_ercot_price":total_ercot_price,
-          "to be charged to card: total_charge": total_charge,
-          
-          "total amount earned by not buying from grid: oppo_earned":oppo_earned,
-          "earned toward solar: total_earned_toward_solar":total_earned_toward_solar,
-        },
-        need_to_fix:{
-          // "_______________":"______________________________",
-          // "total amount earned by not buying from grid: oppo_earned":oppo_earned,
-          // "earned toward solar: total_earned_toward_solar":total_earned_toward_solar,
-          total_ercot_price
-        },
-        avg_earned,
-        new_ones:{
-        }
-      });
-    }
-
     // create csv and json
     await writeRecordsCSVandJSON({
       dir:"./out",
@@ -419,9 +384,53 @@ async function loadSingleDayMeterData( file_path ){
       end: cur.end,
     }); 
 
+    return {
+      times:{
+        period_start: new Date(cur.start).toString(),
+        period_end: new Date(cur.end).toString(),
+        earliest_record: earliest_obj.usage_time,
+        latest_record: latest_obj.usage_time,
+      },
+      info: {
+        production_info: {
+          'consuming or producing more: gross_consumption': gross_consumption,
+          'used from both sources: gross_usage': gross_usage,
+          "raw production": total_raw_production,
+        },
+        in_bill: {
+          "taken from grid: total_consumption": total_consumption,
+          "sent to grid: total_surplus_generation": total_surplus_generation,
+          "bill credit earned: total_credit_earned": total_credit_earned,
+          "tax1 gross_receipt_tax_reimbursement": gross_receipt_tax_reimbursement_price,
+          "tax2 pcu_rate": pcu_rate_price,
+          "energy provider charge: total_energy_charge": total_energy_charge,
+          "oncor charge: total_oncor_price": total_oncor_price,
+          "ercot charge: total_ercot_price_floor": total_ercot_price_floor,
+          "to be charged to card: total_charge": total_charge,
+          'avg earned for solar production: avg_earned':avg_earned,
+        },
+        money: {
+          "bill credit earned: total_credit_earned": total_credit_earned,
+          "earned by not buying from grid: oppo_earned": oppo_earned,
+          "earned toward solar: total_earned_toward_solar": total_earned_toward_solar,
+        }
+      },
+      need_to_fix:{
+        // "_______________":"______________________________",
+        // "total amount earned by not buying from grid: oppo_earned":oppo_earned,
+        // "earned toward solar: total_earned_toward_solar":total_earned_toward_solar,
+        'off by a few cents... sum at end good? :total_ercot_price':total_ercot_price
+      },
+      // new_ones:{
+      // }
+    }
   });
 
-  await Promise.all(to_wait); 
+  const report = await Promise.all(to_wait); 
+
+  if( config.print_bill_period_results === true ){
+    console.log(report);
+  }
 
   console.log('done');
   
