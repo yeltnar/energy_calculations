@@ -335,13 +335,16 @@ async function loadSingleDayMeterData( file_path ){
     total_charge_no_tax = new Decimal(total_charge_no_tax)
                           .minus(base_fee); // minus cuz of how positive/negitive works out 
 
-    const total_ercot_price = await (async()=>{      
+    const {total_ercot_price, total_ercot_price_rounded} = await (async()=>{      
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].ercot_price===undefined){continue;}
         to_return = (new Decimal(to_return).add(cur_records_obj[k].ercot_price));
       }
-      return to_return.toNumber();
+      return {
+        total_ercot_price: to_return.toNumber(),
+        total_ercot_price_rounded: to_return.times(100).floor().div(100).toNumber(),
+      }
     })();
 
     const {earliest_obj, latest_obj} = await(async()=>{
@@ -397,7 +400,7 @@ async function loadSingleDayMeterData( file_path ){
           'used from both sources: gross_usage': gross_usage,
           "raw production": total_raw_production,
         },
-        in_bill: {
+        bill: {
           "taken from grid: total_consumption": total_consumption,
           "sent to grid: total_surplus_generation": total_surplus_generation,
           "bill credit earned: total_credit_earned": total_credit_earned,
@@ -405,7 +408,7 @@ async function loadSingleDayMeterData( file_path ){
           "tax2 pcu_rate": pcu_rate_price,
           "energy provider charge: total_energy_charge": total_energy_charge,
           "oncor charge: total_oncor_price": total_oncor_price,
-          "ercot charge: total_ercot_price_floor": total_ercot_price_floor,
+          "ercot charge: total_ercot_price_rounded": total_ercot_price_rounded,
           "to be charged to card: total_charge": total_charge,
           'avg earned for solar production: avg_earned':avg_earned,
         },
@@ -415,12 +418,11 @@ async function loadSingleDayMeterData( file_path ){
           "earned toward solar: total_earned_toward_solar": total_earned_toward_solar,
         }
       },
-      need_to_fix:{
-        // "_______________":"______________________________",
-        // "total amount earned by not buying from grid: oppo_earned":oppo_earned,
-        // "earned toward solar: total_earned_toward_solar":total_earned_toward_solar,
-        'off by a few cents... sum at end good? :total_ercot_price':total_ercot_price
-      },
+      // need_to_fix:{
+      //   // "_______________":"______________________________",
+      //   'off a cents; watch consumption number; round up charge': total_ercot_price,
+      //   'total_ercot_price_rounded': total_ercot_price_rounded,
+      // },
       // new_ones:{
       // }
     }
@@ -429,7 +431,8 @@ async function loadSingleDayMeterData( file_path ){
   const report = await Promise.all(to_wait); 
 
   if( config.print_bill_period_results === true ){
-    console.log(report);
+    report.forEach(c=>console.log(c));
+    // console.log(report);
   }
 
   console.log('done');
@@ -570,7 +573,6 @@ function addPrice(records_obj, energy_prices){
 
   for( let k in records_obj ){
 
-    
     if(records_obj[k].ercot_price===undefined){
       // console.log(records_obj[k]);
       // throw new Error('records_obj[k].ercot_price');
