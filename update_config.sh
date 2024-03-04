@@ -1,6 +1,6 @@
 mkdir new_config
 ./mount_config.sh 
-cp config/* new_config/
+cp enc_config/* new_config/
 vim "new_config/local.json"
 
 mksquashfs ./new_config ./new_config.sqfs
