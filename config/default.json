@@ -5,5 +5,6 @@
     "JMAP_TOKEN":"",
     "check_email":true,
     "print_bill_period_results":true,
-    "download_pricing_history":false
+    "download_pricing_history":false,
+    "bill_periods":[]
 }
