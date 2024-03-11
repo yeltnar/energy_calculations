@@ -214,6 +214,8 @@ export const setupRecordsObj = (() => {
         return records_obj;
     }
 
+    setupRecordsObj();
+
     return setupRecordsObj;
 })();
 
@@ -224,11 +226,11 @@ export async function main(){
 
   console.log('start');
   
-  const records_obj = setupRecordsObj();
+  const records_obj = await setupRecordsObj();
 
   // bill_periods
   const to_wait = bill_periods.map(async(cur)=>{
-    console.log({cur})
+    // console.log({cur})
     return await getInfoForRange(records_obj, cur);
   });
 
@@ -239,8 +241,9 @@ export async function main(){
     // console.log(report);
   }
 
-  console.log('done');
-  
+  return report;
+
+  console.log('done');  
 }
 
 export async function getInfoForRange( records_obj, cur ){
@@ -433,6 +436,8 @@ export async function getInfoForRange( records_obj, cur ){
       start: cur.start, 
       end: cur.end,
     }); 
+    
+    const largest_production = getLargestProduction(cur_records_obj);
 
     return {
       times:{
@@ -446,6 +451,7 @@ export async function getInfoForRange( records_obj, cur ){
           'consuming or producing more: gross_consumption': gross_consumption,
           'used from both sources: gross_usage': gross_usage,
           "raw production": total_raw_production,
+          "largest production time": largest_production.usage_time,
         },
         bill: {
           "taken from grid: total_consumption": total_consumption,
@@ -470,8 +476,13 @@ export async function getInfoForRange( records_obj, cur ){
       //   'off a cents; watch consumption number; round up charge': total_ercot_price,
       //   'total_ercot_price_rounded': total_ercot_price_rounded,
       // },
-      // new_ones:{
-      // }
+    //   new_ones:{
+        // earliest_obj,
+        // energy_charge,
+        // ercot_rate,
+        // oncor_rate,
+        // base_fee
+    //   }
     }
 }
 

@@ -6,3 +6,4 @@ energy_prices
 .DS_Store
 config.sqfs
 log.log
+server.log
