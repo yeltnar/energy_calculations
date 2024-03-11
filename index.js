@@ -1,2 +1,9 @@
 import {main} from './single_run.js';
-main();
+import {server} from './server.js';
+import config from 'config';
+
+if( config.start_server === true || process.env.start_server === 'true' ){
+  server();
+}else{
+  main();
+}

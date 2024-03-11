@@ -21,6 +21,25 @@ function timeoutPromise(ms){
   }); 
 }
 
+function addOneDay( date_str ){
+  const date_obj = new Date(date_str);
+  const day = date_obj.getDate()+1; // add one cuz bill is odd 
+  const month = date_obj.getMonth()+1; // JS months are weird 
+  const year = date_obj.getFullYear();
+  const str = `${month}/${day}/${year}`;
+  const new_date = new Date(str);
+  const new_ms = new_date.getTime();
+  return new_ms;
+}
+
+export function fixBillPeriods(cur){
+    cur._in_start = cur.start;
+    cur._in_end = cur.end;
+    cur.start = addOneDay(cur.start);
+    cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
+    return cur;
+  }
+
 const out_directory = "./out";
 
 async function readMeterContentFromDisk( file_path = process.argv[2] ){
@@ -45,21 +64,8 @@ async function loadSingleDayMeterData( file_path ){
   return records_obj;
 }
 
-// main
-export async function main(){
-
-  const bill_periods = await(async()=>{
-
-    function addOneDay( date_str ){
-      const date_obj = new Date(date_str);
-      const day = date_obj.getDate()+1; // add one cuz bill is odd 
-      const month = date_obj.getMonth()+1; // JS months are weird 
-      const year = date_obj.getFullYear();
-      const str = `${month}/${day}/${year}`;
-      const new_date = new Date(str);
-      const new_ms = new_date.getTime();
-      return new_ms;
-    }
+// TODO cache response 
+async function getBillPeriods(){
   
     // start dates should be the day after cuz they don't look at the that day
     // end dates should be the day after finish so math works out 
@@ -79,13 +85,7 @@ export async function main(){
     ];
   
     // fix bill periods to real periods 
-    let periods = proto_bill_periods.map((cur)=>{
-      cur._in_start = cur.start;
-      cur._in_end = cur.end;
-      cur.start = addOneDay(cur.start);
-      cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
-      return cur;
-    });
+    let periods = proto_bill_periods.map(fixBillPeriods);
     
     // remove dups 
     periods = periods.reduce(( acc, cur, i, arr )=>{
@@ -134,74 +134,116 @@ export async function main(){
     })();
   
     return periods;
-  })();
+  }
+  
+// TODO move out of this function block 
+async function writeRecordsCSVandJSON({records_obj, start, end, dir, name}){
+const csv_path = `${dir}/${name}.csv`;
+const json_path = `${dir}/${name}.json`;
+
+const cur_records_obj = await getRecordsRange({records_obj, start, end});
+    
+let final_arr = getCSVArr(cur_records_obj);
+const csv_content = stringify(final_arr);
+
+return await Promise.all([
+    await fs.writeFile( csv_path , csv_content ),
+    await fs.writeFile( json_path , JSON.stringify(cur_records_obj,null,2) ),
+])
+}
+
+export const setupRecordsObj = (() => {
+
+    let records_obj;
+
+    async function setupRecordsObj() {
+
+        const bill_periods = await getBillPeriods();
+
+        // memoize 
+        if(records_obj!==undefined){
+            return records_obj;
+        }
+
+        const in_directory = './in_csv';
+
+        const energy_prices_v1 = await loadEnergyPrices();
+
+        if (config.check_email === true) {
+            const num_results = 3;
+            await download_energy_report(in_directory, num_results);
+        }
+
+        records_obj = await loadMeterData(in_directory);
+
+        const date_list = Object.keys(records_obj).reduce((acc, key) => {
+            const cur = records_obj[key];
+            const time = cur.usage_date;
+            if (acc.indexOf(time) < 0) {
+                acc.push(time);
+            }
+            return acc;
+        }, []);
+
+        const energy_prices_v2 = await downloadPricingHistoryArr(date_list);
+        const energy_prices = { ...energy_prices_v1, ...energy_prices_v2 };
+
+        const production_obj = await getProductionContent(date_list);
+
+        addRawProduction(records_obj, production_obj)
+        addTotalUsage(records_obj);
+        invertField(records_obj, 'consumption');
+        addBillPeriod(records_obj, bill_periods);
+        addPrice(records_obj, energy_prices);
+        addTotalChargeNoTax(records_obj);
+
+        if (config.print_largest_production === true) {
+            const largest_production = getLargestProduction(records_obj);
+            console.log({ largest_production });
+        }
+
+        // write with all data 
+        await writeRecordsCSVandJSON({
+            dir: "./out",
+            name: 'all',
+            records_obj,
+            start: 0,
+            end: (new Date('Jan 01 3024').getTime()),
+        });
+
+        return records_obj;
+    }
+
+    return setupRecordsObj;
+})();
+
+// main
+export async function main(){
+
+  const bill_periods = await getBillPeriods();
 
   console.log('start');
   
-  const in_directory = './in_csv';
-  
-  const energy_prices_v1 = await loadEnergyPrices(); 
-  
-  if( config.check_email === true ){
-    const num_results = 3;
-    await download_energy_report(in_directory, num_results);
-  }
-  
-  const records_obj = await loadMeterData( in_directory );
-  
-  const date_list = Object.keys(records_obj).reduce(( acc, key )=>{
-    const cur = records_obj[key];
-    const time = cur.usage_date;
-    if( acc.indexOf(time)<0 ){
-      acc.push(time);
-    }
-    return acc;
-  },[]);
-
-  const energy_prices_v2 = await downloadPricingHistoryArr( date_list );
-  const energy_prices = {...energy_prices_v1, ...energy_prices_v2};
-
-  const production_obj = await getProductionContent( date_list );
-
-  addRawProduction( records_obj, production_obj )
-  addTotalUsage(records_obj);
-  invertField(records_obj, 'consumption');
-  addBillPeriod(records_obj, bill_periods);
-  addPrice(records_obj, energy_prices);
-  addTotalChargeNoTax(records_obj);
-
-  if( config.print_largest_production === true ){
-    const largest_production = getLargestProduction(records_obj);
-    console.log({largest_production});
-  }
-  
-  // TODO move out of this function block 
-  async function writeRecordsCSVandJSON({records_obj, start, end, dir, name}){
-    const csv_path = `${dir}/${name}.csv`;
-    const json_path = `${dir}/${name}.json`;
-
-    const cur_records_obj = await getRecordsRange({records_obj, start, end});
-        
-    let final_arr = getCSVArr(cur_records_obj);
-    const csv_content = stringify(final_arr);
-
-    return await Promise.all([
-      await fs.writeFile( csv_path , csv_content ),
-      await fs.writeFile( json_path , JSON.stringify(cur_records_obj,null,2) ),
-    ])
-  }
-
-  // write with all data 
-  await writeRecordsCSVandJSON({
-    dir:"./out",
-    name:'all',
-    records_obj, 
-    start:0, 
-    end:(new Date('Jan 01 3024').getTime()),
-  });
+  const records_obj = setupRecordsObj();
 
   // bill_periods
   const to_wait = bill_periods.map(async(cur)=>{
+    console.log({cur})
+    return await getInfoForRange(records_obj, cur);
+  });
+
+  const report = await Promise.all(to_wait); 
+
+  if( config.print_bill_period_results === true ){
+    report.forEach(c=>console.log(c));
+    // console.log(report);
+  }
+
+  console.log('done');
+  
+}
+
+export async function getInfoForRange( records_obj, cur ){
 
     const name = getSimpleMonth(cur.end);
 
@@ -431,17 +473,6 @@ export async function main(){
       // new_ones:{
       // }
     }
-  });
-
-  const report = await Promise.all(to_wait); 
-
-  if( config.print_bill_period_results === true ){
-    report.forEach(c=>console.log(c));
-    // console.log(report);
-  }
-
-  console.log('done');
-  
 }
 
 async function loadMeterData( in_directory ){
