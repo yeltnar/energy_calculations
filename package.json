@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js | tee log.log",
     "enc_start": "./mount_config.sh; npm start; ./unmount_config.sh",
-    "nodemon": "npx nodemon --ignore ./out --ignore ./energy_prices/tmp/ start"
+    "nodemon": "npx nodemon --ignore ./out --ignore ./energy_prices/tmp/ start",
+    "server": "export start_server=true; node index.js | tee server.log",
+    "nodemon_server": "export start_server=true; npx nodemon --ignore ./out --ignore ./energy_prices/tmp/ start"
   },
   "type": "module",
   "author": "",
@@ -19,6 +21,7 @@
     "csv-stringify": "^6.4.5",
     "decimal.js": "^10.4.3",
     "koa": "^2.15.0",
+    "koa-router": "^12.0.1",
     "node-html-parser": "^6.1.12"
   }
 }
