@@ -169,6 +169,11 @@ async function loadSingleDayMeterData( file_path ){
   addBillPeriod(records_obj, bill_periods);
   addPrice(records_obj, energy_prices);
   addTotalChargeNoTax(records_obj);
+
+  if( config.print_largest_production === true ){
+    const largest_production = getLargestProduction(records_obj);
+    console.log({largest_production});
+  }
   
   // TODO move out of this function block 
   async function writeRecordsCSVandJSON({records_obj, start, end, dir, name}){
@@ -754,5 +759,22 @@ function getBaseFee( cur_records_obj ){
 
   console.log('----- did not find base fee');
   process.exit(-1);
+}
+
+function getLargestProduction( records_obj ){
+
+  // console.log(Object.keys(records_obj));
+  let max_obj = null;
+
+  for( let k in records_obj ){    
+    if(max_obj===null){
+      max_obj = records_obj[k];
+    }else if( max_obj.raw_production < records_obj[k].raw_production ){
+      max_obj = records_obj[k];
+    }
+  }
+
+  // records_obj.forEach((cur)=>);
+  return max_obj;
 }
 
