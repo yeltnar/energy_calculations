@@ -155,15 +155,21 @@ return await Promise.all([
 export const setupRecordsObj = (() => {
 
     let records_obj;
+    let pending_promise = (async()=>{})();
+
+    async function wrapper() {
+      await pending_promise;
+
+      // memoize 
+      if (records_obj === undefined) {
+        pending_promise = setupRecordsObj();
+      }
+
+      return await pending_promise;
+    }
 
     async function setupRecordsObj() {
-
         const bill_periods = await getBillPeriods();
-
-        // memoize 
-        if(records_obj!==undefined){
-            return records_obj;
-        }
 
         const in_directory = './in_csv';
 
@@ -215,9 +221,9 @@ export const setupRecordsObj = (() => {
     }
 
     // TODO if want this, can't have it run twice with one shot 
-    // setupRecordsObj();
+    wrapper();
 
-    return setupRecordsObj;
+    return wrapper;
 })();
 
 // main
@@ -242,9 +248,9 @@ export async function main(){
     // console.log(report);
   }
 
-  return report;
-
   console.log('done');  
+
+  return report;
 }
 
 export async function getInfoForRange( records_obj, cur ){
