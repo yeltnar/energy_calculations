@@ -214,7 +214,8 @@ export const setupRecordsObj = (() => {
         return records_obj;
     }
 
-    setupRecordsObj();
+    // TODO if want this, can't have it run twice with one shot 
+    // setupRecordsObj();
 
     return setupRecordsObj;
 })();
@@ -450,7 +451,7 @@ export async function getInfoForRange( records_obj, cur ){
         production_info: {
           'consuming or producing more: gross_consumption': gross_consumption,
           'used from both sources: gross_usage': gross_usage,
-          "raw production": total_raw_production,
+          "raw production: total_raw_production": total_raw_production,
           "largest production time": largest_production.usage_time,
         },
         bill: {
