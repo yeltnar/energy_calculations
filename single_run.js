@@ -461,7 +461,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       return {earliest_obj,latest_obj};
     })();
 
-    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil();;
+    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
 
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
