@@ -7,5 +7,5 @@ if( config.start_server === true || process.env.start_server === 'true' ){
   server();
 }else{
   console.log('oneshot selected');
-  main();
+  /*await*/ main({write:true})
 }

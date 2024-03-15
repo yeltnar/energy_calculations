@@ -8,6 +8,7 @@ import download_energy_report from './download_energy_report.js';
 import {getProductionContent} from './getProductionContent.js'
 import {loadEnergyPrices, downloadPricingHistoryArr} from './loadEnergyPrices.js'
 import {getBillData} from './readBillSvg.js';
+import { readdir } from 'fs';
 
 const PCU_RATE = 0.001667;
 const GROSS_RECEIPT_TAX_REIMBURSEMENT = 0.01997;
@@ -137,19 +138,21 @@ async function getBillPeriods(){
   }
   
 // TODO move out of this function block 
-async function writeRecordsCSVandJSON({records_obj, start, end, dir, name}){
-const csv_path = `${dir}/${name}.csv`;
-const json_path = `${dir}/${name}.json`;
+async function writeRecordsCSVandJSON({records_obj, start, end, dir, name, write}){
+  const csv_path = `${dir}/${name}.csv`;
+  const json_path = `${dir}/${name}.json`;
 
-const cur_records_obj = await getRecordsRange({records_obj, start, end});
-    
-let final_arr = getCSVArr(cur_records_obj);
-const csv_content = stringify(final_arr);
+  const cur_records_obj = await getRecordsRange({records_obj, start, end});
+      
+  let final_arr = getCSVArr(cur_records_obj);
+  const csv_content = stringify(final_arr);
 
-return await Promise.all([
-    await fs.writeFile( csv_path , csv_content ),
-    await fs.writeFile( json_path , JSON.stringify(cur_records_obj,null,2) ),
-])
+  if(write===true){
+    return await Promise.all([
+        await fs.writeFile( csv_path , csv_content ),
+        await fs.writeFile( json_path , JSON.stringify(cur_records_obj,null,2) ),
+    ]);
+  }
 }
 
 export const setupRecordsObj = (() => {
@@ -157,18 +160,26 @@ export const setupRecordsObj = (() => {
     let records_obj;
     let pending_promise = (async()=>{})();
 
+    let last_file_read = -1;
+
     async function wrapper() {
       await pending_promise;
 
+      const files_changed = await filesChanged();
+
       // memoize 
-      if (records_obj === undefined) {
-        pending_promise = setupRecordsObj();
+      if (records_obj === undefined || files_changed === true) {
+        pending_promise = setupRecordsObj({write:false});
+        pending_promise.then(()=>{
+          last_file_read = new Date().getTime();
+        });
       }
 
       return await pending_promise;
     }
 
-    async function setupRecordsObj() {
+    async function setupRecordsObj({write}) {
+      
         const bill_periods = await getBillPeriods();
 
         const in_directory = './in_csv';
@@ -215,9 +226,37 @@ export const setupRecordsObj = (() => {
             records_obj,
             start: 0,
             end: (new Date('Jan 01 3024').getTime()),
+            write,
         });
 
         return records_obj;
+    }
+
+    async function filesChanged(){
+
+      const dir = './out';
+      const files = await fs.readdir(dir);
+
+      let to_return = false;
+
+      await Promise.all(files.map(async(cur)=>{
+        const stat = await fs.stat(`${dir}/${cur}`);
+        // console.log({
+        //   cur,
+        //   c: last_file_read < stat.mtimeMs,
+        //   now: last_file_read,
+        //   file_time: stat.mtimeMs,
+        // });
+        to_return = to_return || last_file_read < stat.mtimeMs;
+      }));
+
+      // TODO remove 
+      console.log({
+        filesChanged: to_return,
+        d: (new Date().getTime()) - last_file_read,
+      });
+
+      return to_return;
     }
 
     // TODO if want this, can't have it run twice with one shot 
@@ -227,18 +266,18 @@ export const setupRecordsObj = (() => {
 })();
 
 // main
-export async function main(){
+export async function main({write}){
 
   const bill_periods = await getBillPeriods();
 
   console.log('start');
   
-  const records_obj = await setupRecordsObj();
+  const records_obj = await setupRecordsObj({write});
 
   // bill_periods
   const to_wait = bill_periods.map(async(cur)=>{
     // console.log({cur})
-    return await getInfoForRange(records_obj, cur);
+    return await getInfoForRange({records_obj, cur, write});
   });
 
   const report = await Promise.all(to_wait); 
@@ -253,7 +292,7 @@ export async function main(){
   return report;
 }
 
-export async function getInfoForRange( records_obj, cur ){
+export async function getInfoForRange( {records_obj, cur, write} ){
 
     const name = getSimpleMonth(cur.end);
 
@@ -442,6 +481,7 @@ export async function getInfoForRange( records_obj, cur ){
       records_obj, 
       start: cur.start, 
       end: cur.end,
+      write,
     }); 
     
     const largest_production = getLargestProduction(cur_records_obj);

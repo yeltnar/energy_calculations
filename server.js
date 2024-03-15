@@ -35,7 +35,7 @@ export function server(){
     });
 
     router.get('all', '/all', async (ctx) => {
-        ctx.body = await main();
+        ctx.body = await main({write:false});
     });
 
     app.use(router.routes()).use(router.allowedMethods());
