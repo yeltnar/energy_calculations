@@ -298,6 +298,10 @@ export async function getInfoForRange( {records_obj, cur, write} ){
 
     const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
 
+    if(Object.keys(cur_records_obj).length <= 0){
+      throw new Error('no records for time range');
+    }
+
     const energy_charge  = cur.energy_charge;
     const ercot_rate = cur.ercot_rate;
     const oncor_rate = cur.oncor_rate;
@@ -457,6 +461,8 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       return {earliest_obj,latest_obj};
     })();
 
+    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil();;
+
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
     // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
@@ -492,6 +498,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
         period_end: new Date(cur.end).toString(),
         earliest_record: earliest_obj.usage_time,
         latest_record: latest_obj.usage_time,
+        days_in_range,
       },
       info: {
         production_info: {
@@ -499,6 +506,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
           'used from both sources: gross_usage': gross_usage,
           "raw production: total_raw_production": total_raw_production,
           "largest production time": largest_production.usage_time,
+          avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).toNumber(),
         },
         bill: {
           "taken from grid: total_consumption": total_consumption,
@@ -523,13 +531,11 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       //   'off a cents; watch consumption number; round up charge': total_ercot_price,
       //   'total_ercot_price_rounded': total_ercot_price_rounded,
       // },
-    //   new_ones:{
-        // earliest_obj,
-        // energy_charge,
-        // ercot_rate,
-        // oncor_rate,
-        // base_fee
-    //   }
+      // new_ones:{
+      //   earliest_obj,
+      //   latest_obj,
+      //   days_in_range
+      // }
     }
 }
 
