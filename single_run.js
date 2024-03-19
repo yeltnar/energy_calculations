@@ -364,14 +364,16 @@ export async function getInfoForRange( {records_obj, cur, write} ){
 
     // sum of total usage 
     const gross_usage = await (async()=>{      
-      let to_return = new Decimal(0);
+      let _gross_usage = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].total_usage===undefined){
           throw new Error(`cur_records_obj[k].total_usage is undefined`);
         }
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].total_usage));
+        _gross_usage = (new Decimal(_gross_usage).add(cur_records_obj[k].total_usage));
       }
-      return to_return.toNumber();
+      _gross_usage = _gross_usage.toNumber();
+
+      return _gross_usage;
     })();
 
     const total_surplus_generation = await (async()=>{      
