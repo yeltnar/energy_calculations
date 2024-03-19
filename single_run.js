@@ -390,7 +390,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
         if(cur_records_obj[k].raw_production===undefined){
           throw new Error(`cur_records_obj[k].raw_production is undefined`);
         }
-        to_return = (new Decimal(to_return).add(cur_records_obj[k].raw_production));
+        to_return = to_return.add(cur_records_obj[k].raw_production);
       }
       return to_return.toNumber();
     })();
@@ -463,7 +463,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       return {earliest_obj,latest_obj};
     })();
 
-    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
+    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).toNumber();
 
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
