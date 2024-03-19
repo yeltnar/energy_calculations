@@ -53,7 +53,7 @@ const getSingleProductionContent = (() => {
                     production_obj[c.ms] = c;
                 });
 
-                cache_table[cache_key] = true;
+                // cache_table[cache_key] = true;
             }
         }
 
