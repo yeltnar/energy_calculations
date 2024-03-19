@@ -234,7 +234,7 @@ export const setupRecordsObj = (() => {
 
     async function filesChanged(){
 
-      const dir = './out';
+      const dir = './in_csv';
       const files = await fs.readdir(dir);
 
       let to_return = false;
