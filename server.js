@@ -1,7 +1,9 @@
 import Koa from 'koa';
 import koaRouter from 'koa-router';
+import cors from '@koa/cors';
 import { getInfoForRange, setupRecordsObj, fixBillPeriods, main } from './single_run.js';
 const app = new Koa();
+app.use(cors());
 
 const PORT = 3000;
 
@@ -38,7 +40,9 @@ export function server(){
         ctx.body = await main({write:false});
     });
 
-    app.use(router.routes()).use(router.allowedMethods());
+    app.use(router.routes())
+       .use(cors())
+       .use(router.allowedMethods());
 
     app.listen(PORT);
 }
