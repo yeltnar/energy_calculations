@@ -69,8 +69,8 @@ function timeoutPromise(ms){
 
 async function requestProductionContent(site, api_key, startTime, endTime){
 
-    if( api_key === undefined ){
-        throw new Error('api_key is undefined');
+    if( site === undefined || site === '' ){
+        throw new Error('site is undefined');
     }
 
     let final_wait = (async()=>{})()
