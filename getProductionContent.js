@@ -69,6 +69,10 @@ function timeoutPromise(ms){
 
 async function requestProductionContent(site, api_key, startTime, endTime){
 
+    if( api_key === undefined ){
+        throw new Error('api_key is undefined');
+    }
+
     let final_wait = (async()=>{})()
 
     const use_network = config.site !== undefined && config.api_key !==undefined && config.check_solaredge!==false;
