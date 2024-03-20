@@ -463,7 +463,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       return {earliest_obj,latest_obj};
     })();
 
-    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).toNumber();
+    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
 
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
@@ -508,7 +508,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
           'used from both sources: gross_usage': gross_usage,
           "raw production: total_raw_production": total_raw_production,
           "largest production time": largest_production.usage_time,
-          avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).ceil().toNumber(),
+          avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).toNumber(),
         },
         bill: {
           "taken from grid: total_consumption": total_consumption,
