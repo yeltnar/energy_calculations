@@ -475,10 +475,14 @@ export async function getInfoForRange( {records_obj, cur, write} ){
     const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
     const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();
 
-    const total_charge = 
+    const total_fee = 
       new Decimal(gross_receipt_tax_reimbursement_price)
       .add(pcu_rate_price)
       .add(total_charge_no_tax)
+      .toNumber();
+      
+    const total_charge = 
+      new Decimal(total_fee)
       .add(total_credit_earned) // add earned after calculating price of taxes // positive is in your favor 
       .toNumber();
 
@@ -519,6 +523,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
           "energy provider charge: total_energy_charge": total_energy_charge,
           "oncor charge: total_oncor_price": total_oncor_price,
           "ercot charge: total_ercot_price_rounded": total_ercot_price_rounded,
+          "total fee without solar: total_fee": total_fee,
           "to be charged to card: total_charge": total_charge,
           'avg earned for solar production: avg_earned':avg_earned,
         },
