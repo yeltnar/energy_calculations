@@ -508,7 +508,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
           'used from both sources: gross_usage': gross_usage,
           "raw production: total_raw_production": total_raw_production,
           "largest production time": largest_production.usage_time,
-          avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).toNumber(),
+          avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).ceil().toNumber(),
         },
         bill: {
           "taken from grid: total_consumption": total_consumption,
