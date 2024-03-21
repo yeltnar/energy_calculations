@@ -480,7 +480,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
     // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
-    const gross_consumption = new Decimal(total_usage).add(total_raw_production).toNumber();
+    const gross_usage = new Decimal(total_usage).add(total_raw_production).toNumber();
     
     const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();
 
@@ -520,8 +520,8 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       },
       info: {
         production_info: {
-          'consuming or producing more: gross_consumption': gross_consumption,
-          'used from both sources: gross_usage': total_usage,
+          'consuming or producing more: gross_usage': gross_usage,
+          'used from both sources: total_usage': total_usage,
           "raw production: total_raw_production": total_raw_production,
           "largest production time: usage_time": largest_production.usage_time,
           avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).toNumber(),
