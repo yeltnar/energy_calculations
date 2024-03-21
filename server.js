@@ -22,7 +22,7 @@ export function server(){
         };
         
         let cur = {...default_value, ...ctx.request.query}
-        cur = fixBillPeriods(cur);
+        cur = fixBillPeriods(cur, false, true);
         
         const records_obj = await setupRecordsObj();
         
@@ -37,7 +37,9 @@ export function server(){
     });
 
     router.get('all', '/all', async (ctx) => {
-        ctx.body = await main({write:false});
+        ctx.body = {
+            results: await main({write:false})
+        };
     });
 
     app.use(router.routes())

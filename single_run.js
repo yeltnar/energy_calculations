@@ -34,11 +34,19 @@ function addOneDay( date_str ){
   return new_ms;
 }
 
-export function fixBillPeriods(cur){
+export function fixBillPeriods(cur, add_one_day=true, include_end_day=false){
     cur._in_start = cur.start;
     cur._in_end = cur.end;
-    cur.start = addOneDay(cur.start);
-    cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
+    if( add_one_day===true ){
+      cur.start = addOneDay(cur.start);
+      cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
+    }else if( include_end_day===true ){
+      cur.start = new Date(cur.start).getTime();
+      cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
+    }else{
+      cur.start = new Date(cur.start).getTime();
+      cur.end = new Date(cur.end).getTime()-1; // subtract 1 to get last ms of ending day 
+    }
     return cur;
   }
 
@@ -67,7 +75,9 @@ async function loadSingleDayMeterData( file_path ){
 }
 
 // TODO cache response 
-async function getBillPeriods(){
+async function getBillPeriods({fix_bill}={fix_bill:true}){
+
+    // fix_bill = fix_bill===undefined ? true : false;
   
     // start dates should be the day after cuz they don't look at the that day
     // end dates should be the day after finish so math works out 
@@ -181,6 +191,7 @@ export const setupRecordsObj = (() => {
 
     async function setupRecordsObj({write}) {
       
+        // TODO {fix_bill: true}?
         const bill_periods = await getBillPeriods();
 
         const in_directory = './in_csv';
@@ -269,7 +280,7 @@ export const setupRecordsObj = (() => {
 // main
 export async function main({write}){
 
-  const bill_periods = await getBillPeriods();
+  const bill_periods = await getBillPeriods({fix_bill:true});
 
   console.log('start');
   
