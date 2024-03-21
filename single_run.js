@@ -222,6 +222,7 @@ export const setupRecordsObj = (() => {
         addRawProduction(records_obj, production_obj)
         addTotalUsage(records_obj);
         invertField(records_obj, 'consumption');
+        addGrossUsage(records_obj);
         addBillPeriod(records_obj, bill_periods);
         addPrice(records_obj, energy_prices);
         addTotalChargeNoTax(records_obj);
@@ -475,12 +476,21 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       return {earliest_obj,latest_obj};
     })();
 
+    const gross_usage = await (async()=>{   
+      let to_return = new Decimal(0);
+      for (let k in cur_records_obj ){
+        if(cur_records_obj[k].gross_usage===undefined){throw new Error('gross_usage not defined');continue;}
+        to_return = (new Decimal(to_return).add(cur_records_obj[k].gross_usage));
+      }
+      return to_return.toNumber();
+    })();
+
     const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
 
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
     // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
-    const gross_usage = new Decimal(total_usage).add(total_raw_production).toNumber();
+    const old_gross_usage = new Decimal(total_usage).add(total_raw_production).toNumber();
     
     const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();
 
@@ -551,9 +561,8 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       //   'total_ercot_price_rounded': total_ercot_price_rounded,
       // },
       // new_ones:{
-      //   earliest_obj,
-      //   latest_obj,
-      //   days_in_range
+      //   gross_usage,
+      //   new_gross_usage,
       // }
     }
 }
@@ -769,6 +778,14 @@ function addTotalChargeNoTax( records_obj ){
       .add(record.ercot_price)
     }
       
+  }
+}
+
+function addGrossUsage(records_obj){
+  for( let k in records_obj){
+    const record = records_obj[k];
+    // consumption is negitive     
+    record.gross_usage = new Decimal(record.raw_production).add(record.total_usage).toNumber(); 
   }
 }
 
