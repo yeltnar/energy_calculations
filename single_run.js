@@ -97,7 +97,7 @@ async function getBillPeriods({fix_bill}={fix_bill:true}){
     ];
   
     // fix bill periods to real periods 
-    let periods = proto_bill_periods.map(fixBillPeriods);
+    let periods = proto_bill_periods.map(c=>fixBillPeriods(c));
     
     // remove dups 
     periods = periods.reduce(( acc, cur, i, arr )=>{
