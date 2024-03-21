@@ -476,6 +476,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       return {earliest_obj,latest_obj};
     })();
 
+    // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
     const gross_usage = await (async()=>{   
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
@@ -484,29 +485,27 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       }
       return to_return.toNumber();
     })();
-
-    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
-
-    const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
-    
-    // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
     const old_gross_usage = new Decimal(total_usage).add(total_raw_production).toNumber();
-    
-    const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();
 
+    ////// monthly calculations //////
+    const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
+    const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
-    const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();
-
+    const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();    
+   
     const total_fee = 
       new Decimal(gross_receipt_tax_reimbursement_price)
       .add(pcu_rate_price)
       .add(total_charge_no_tax)
-      .toNumber();
-      
+      .toNumber();    
+
     const total_charge = 
       new Decimal(total_fee)
       .add(total_credit_earned) // add earned after calculating price of taxes // positive is in your favor 
-      .toNumber();
+      .toNumber();    
+    ////// end of monthly calculations //////
+
+    const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();    
 
     // create csv and json
     await writeRecordsCSVandJSON({
