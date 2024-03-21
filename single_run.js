@@ -375,17 +375,17 @@ export async function getInfoForRange( {records_obj, cur, write} ){
     })();
 
     // sum of total usage 
-    const gross_usage = await (async()=>{      
-      let _gross_usage = new Decimal(0);
+    const total_usage = await (async()=>{      
+      let total_usage = new Decimal(0);
       for (let k in cur_records_obj ){
         if(cur_records_obj[k].total_usage===undefined){
           throw new Error(`cur_records_obj[k].total_usage is undefined`);
         }
-        _gross_usage = (new Decimal(_gross_usage).add(cur_records_obj[k].total_usage));
+        total_usage = (new Decimal(total_usage).add(cur_records_obj[k].total_usage));
       }
-      _gross_usage = _gross_usage.toNumber();
+      total_usage = total_usage.toNumber();
 
-      return _gross_usage;
+      return total_usage;
     })();
 
     const total_surplus_generation = await (async()=>{      
@@ -480,7 +480,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     
     // sum of total_usage + sum of raw_production // tells you if you're consuming or producing more 
-    const gross_consumption = new Decimal(gross_usage).add(total_raw_production).toNumber();
+    const gross_consumption = new Decimal(total_usage).add(total_raw_production).toNumber();
     
     const gross_spend = new Decimal(total_credit_earned).add(total_spend).toNumber();
 
@@ -521,7 +521,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       info: {
         production_info: {
           'consuming or producing more: gross_consumption': gross_consumption,
-          'used from both sources: gross_usage': gross_usage,
+          'used from both sources: gross_usage': total_usage,
           "raw production: total_raw_production": total_raw_production,
           "largest production time: usage_time": largest_production.usage_time,
           avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).toNumber(),
