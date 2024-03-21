@@ -24,11 +24,12 @@ function timeoutPromise(ms){
 
 function addOneDay( date_str ){
   const date_obj = new Date(date_str);
-  const day = date_obj.getDate()+1; // add one cuz bill is odd 
+  const day = date_obj.getDate(); 
   const month = date_obj.getMonth()+1; // JS months are weird 
   const year = date_obj.getFullYear();
   const str = `${month}/${day}/${year}`;
-  const new_date = new Date(str);
+  let new_date = new Date(str);
+  new_date = new Date(new_date.getTime() + 86400000); // add one cuz bill is odd 
   const new_ms = new_date.getTime();
   return new_ms;
 }
