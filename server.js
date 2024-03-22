@@ -16,6 +16,12 @@ export function server(){
         console.log(ctx.url)
         await next();
     });
+
+    router.get('all', /(\/api)?\/all/, async (ctx) => {
+        ctx.body = {
+            results: await main({write:false})
+        };
+    });
     
     router.get('range', /(\/api)?\//, async (ctx) => {
         
@@ -39,12 +45,6 @@ export function server(){
             // query: ctx.request.query,
         };
         
-    });
-
-    router.get('all', /(\/api)?\/all/, async (ctx) => {
-        ctx.body = {
-            results: await main({write:false})
-        };
     });
 
     app.use(router.routes())
