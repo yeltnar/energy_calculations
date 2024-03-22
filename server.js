@@ -11,8 +11,13 @@ export function server(){
     console.log(`starting server on port ${PORT}`);
 
     const router = new koaRouter();
+
+    app.use(async function (ctx, next) {
+        console.log(ctx.url)
+        await next();
+    });
     
-    router.get('range', '/', async (ctx) => {
+    router.get('range', /(\/api)?\//, async (ctx) => {
         
         const default_value = {
             "start": "0",
@@ -36,7 +41,7 @@ export function server(){
         
     });
 
-    router.get('all', '/all', async (ctx) => {
+    router.get('all', /(\/api)?\/all/, async (ctx) => {
         ctx.body = {
             results: await main({write:false})
         };
