@@ -10,6 +10,11 @@ import {loadEnergyPrices, downloadPricingHistoryArr} from './loadEnergyPrices.js
 import {getBillData} from './readBillSvg.js';
 import { readdir } from 'fs';
 
+const ONE_SEC = 1000;
+const ONE_MIN = ONE_SEC * 60;
+const ONE_HR = ONE_MIN * 60;
+const ONE_DAY = ONE_HR * 24;
+
 const PCU_RATE = 0.001667;
 const GROSS_RECEIPT_TAX_REIMBURSEMENT = 0.01997;
 
@@ -526,6 +531,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
         earliest_record: earliest_obj.usage_time,
         latest_record: latest_obj.usage_time,
         days_in_range,
+        start_distance_from_today: new Decimal((new Date().getTime() - new Date(earliest_obj.usage_time)) / ONE_DAY).times(1000).round().dividedBy(1000).toNumber(),
       },
       info: {
         production_info: {
@@ -560,8 +566,6 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       //   'total_ercot_price_rounded': total_ercot_price_rounded,
       // },
       // new_ones:{
-      //   gross_usage,
-      //   new_gross_usage,
       // }
     }
 }
