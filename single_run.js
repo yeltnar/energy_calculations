@@ -310,7 +310,11 @@ export async function main({write}){
   return report;
 }
 
-export async function getInfoForRange( {records_obj, cur, write} ){
+export async function getInfoForRange( {records_obj, cur, write, return_individual_data} ){
+
+    if( return_individual_data === undefined ){
+      return_individual_data = false;
+    }
 
     const name = getSimpleMonth(cur.end);
 
@@ -524,7 +528,9 @@ export async function getInfoForRange( {records_obj, cur, write} ){
     
     const largest_production = getLargestProduction(cur_records_obj);
 
-    return {
+    
+
+    const to_return = {
       times:{
         period_start: new Date(cur.start).toString(),
         period_end: new Date(cur.end).toString(),
@@ -569,6 +575,23 @@ export async function getInfoForRange( {records_obj, cur, write} ){
       // new_ones:{
       // }
     }
+
+    if( return_individual_data ){
+      to_return.individual_data = minimizeData(cur_records_obj);
+    }
+
+    return to_return;
+}
+
+function minimizeData( records_obj ){
+  // we want to delete _og_data and make it an array 
+  const to_return = [];
+  for( let k in records_obj ){
+    const to_push = JSON.parse(JSON.stringify(records_obj[k]));
+    delete to_push._og_data;
+    to_return.push(to_push);
+  }
+  return to_return;
 }
 
 async function loadMeterData( in_directory ){
