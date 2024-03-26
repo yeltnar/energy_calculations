@@ -538,6 +538,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
           'consuming or producing more: gross_usage': gross_usage,
           'used from both sources: total_usage': total_usage,
           "raw production: total_raw_production": total_raw_production,
+          "largest production time: largest_production_raw_production": largest_production.raw_production,
           "largest production time: largest_production_usage_time": largest_production.usage_time,
           avg_produced: new Decimal(total_raw_production).dividedBy(days_in_range).toNumber(),
         },
