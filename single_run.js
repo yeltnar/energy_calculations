@@ -284,7 +284,7 @@ export const setupRecordsObj = (() => {
 })();
 
 // main
-export async function main({write}){
+export async function main({write, return_individual_data}){
 
   const bill_periods = await getBillPeriods({fix_bill:true});
 
@@ -295,7 +295,7 @@ export async function main({write}){
   // bill_periods
   const to_wait = bill_periods.map(async(cur)=>{
     // console.log({cur})
-    return await getInfoForRange({records_obj, cur, write});
+    return await getInfoForRange({records_obj, cur, write, return_individual_data});
   });
 
   const report = await Promise.all(to_wait); 

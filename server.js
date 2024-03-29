@@ -18,8 +18,9 @@ export function server(){
     });
 
     router.get('all', /(\/api)?\/all/, async (ctx) => {
+        const return_individual_data = ctx.request.query.i === 'true';
         ctx.body = {
-            results: await main({write:false})
+            results: await main({write:false, return_individual_data})
         };
     });
     
