@@ -775,7 +775,8 @@ function addPrice(records_obj, energy_prices){
       
     }
 
-    records_obj[k].spend = bill_energy_price.times(records_obj[k]['consumption']);
+    records_obj[k].spend = bill_energy_price.times(records_obj[k]['consumption']).times(-1);
+    // records_obj[k].spend = bill_energy_price.times(records_obj[k]['consumption']);
 
     // for saved // TODO move to its own function? 
     // note: raw production is 0 regardless of if panels were recording or not, per the API 
