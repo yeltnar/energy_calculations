@@ -310,7 +310,7 @@ export async function main({write, return_individual_data}){
   return report;
 }
 
-export async function getInfoForRange( {records_obj, cur, write, return_individual_data} ){
+export async function getInfoForRange( {records_obj, cur, write, return_individual_data, most_recent_count} ){
 
     if( return_individual_data === undefined ){
       return_individual_data = false;
@@ -318,7 +318,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
 
     const name = getSimpleMonth(cur.end);
 
-    const cur_records_obj = await getRecordsRange({records_obj, start:cur.start, end:cur.end});
+    const cur_records_obj = await getRecordsRange({most_recent_count, records_obj, start:cur.start, end:cur.end});
 
     if(Object.keys(cur_records_obj).length <= 0){
       throw new Error('no records for time range');
@@ -853,14 +853,43 @@ function addBillPeriod(records_obj, bill_periods){
   return records_obj;
 }
 
-async function getRecordsRange({records_obj, start, end }){
-  const to_return = {};
+async function getRecordsRange({most_recent_count, records_obj, start, end }){
+
+  if (most_recent_count !== undefined) {
+
+    let records_keys = Object.keys(records_obj);
+
+    // sort the keys so we can get the newset 
+    records_keys = records_keys.sort((a, b) => {
+      if (a < b) {
+        return 1;
+      } else if (a > b) {
+        return -1;
+      }
+      return 0;
+    });
+
+    let end_date = new Date(records_obj[records_keys[0]].ms);
+    end_date.setMinutes(59);
+    end_date.setHours(23);
+    end = end_date.getTime();
+
+    let start_date = new Date(end);
+    start_date.setDate(start_date.getDate() - most_recent_count + 1); // add 1 cuz get last day for free
+    start_date.setMinutes(0);
+    start_date.setHours(0);
+    start = start_date.getTime();
+  }
+
+  let to_return = {};
+
   for( let k in records_obj ){
     const {ms} = records_obj[k];
     if( start <= ms && ms < end ){
       to_return[k] = records_obj[k];
     }
   }
+
   return to_return;
 }
 
