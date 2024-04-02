@@ -43,7 +43,7 @@ export function server(){
         };
         
         let cur = {...default_value, ...ctx.request.query}
-        cur = fixBillPeriods(cur, false, true);
+        cur = fixBillPeriods({cur, add_one_day:false, include_end_day:true});
         
         const records_obj = await setupRecordsObj();
         
@@ -66,7 +66,7 @@ export function server(){
         };
         
         let cur = {...default_value, ...ctx.request.query}
-        cur = fixBillPeriods(cur, false, true);
+        cur = fixBillPeriods({cur, add_one_day:false, include_end_day:true});
         
         const records_obj = await setupRecordsObj();
         

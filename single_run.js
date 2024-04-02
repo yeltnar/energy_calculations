@@ -27,33 +27,41 @@ function timeoutPromise(ms){
   }); 
 }
 
+// returns a date in nubmer form 
 function addOneDay( date_str ){
-  const date_obj = new Date(date_str);
-  const day = date_obj.getDate(); 
-  const month = date_obj.getMonth()+1; // JS months are weird 
-  const year = date_obj.getFullYear();
-  const str = `${month}/${day}/${year}`;
-  let new_date = new Date(str);
-  new_date = new Date(new_date.getTime() + 86400000); // add one cuz bill is odd 
-  const new_ms = new_date.getTime();
-  return new_ms;
+  const date = new Date(date_str);
+  return date.setDate(date.getDate()+1);
 }
 
-export function fixBillPeriods(cur, add_one_day=true, include_end_day=false){
-    cur._in_start = cur.start;
-    cur._in_end = cur.end;
-    if( add_one_day===true ){
-      cur.start = addOneDay(cur.start);
-      cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
-    }else if( include_end_day===true ){
-      cur.start = new Date(cur.start).getTime();
+export function fixBillPeriods({cur, add_one_day=true, include_end_day=false}){
+
+  cur._in_start = cur.start;
+  cur._in_end = cur.end;
+
+  if( add_one_day===true ){
+    // typically for reading bill pdf/svg 
+    cur.start = addOneDay(cur.start);
+    cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
+  }else if( include_end_day===true ){
+    // typically when GUI is requesting range 
+
+    cur.start = new Date(cur.start).getTime();
+    const end_date = new Date(cur.end);
+    const date_check = end_date.getHours() + end_date.getMinutes() + end_date.getSeconds();
+    
+    // else/if to go to end of current day or not
+    if( date_check === 0 ){
       cur.end = addOneDay(cur.end)-1; // subtract 1 to get last ms of ending day 
     }else{
-      cur.start = new Date(cur.start).getTime();
-      cur.end = new Date(cur.end).getTime()-1; // subtract 1 to get last ms of ending day 
+      cur.end = end_date.getTime()+1; // add 1 to make sure to include current time segment 
     }
-    return cur;
+    
+  }else{
+    cur.start = new Date(cur.start).getTime();
+    cur.end = new Date(cur.end).getTime()-1; // subtract 1 to get last ms of ending day 
   }
+  return cur;
+}
 
 const out_directory = "./out";
 
@@ -102,7 +110,7 @@ async function getBillPeriods({fix_bill}={fix_bill:true}){
     ];
   
     // fix bill periods to real periods 
-    let periods = proto_bill_periods.map(c=>fixBillPeriods(c));
+    let periods = proto_bill_periods.map(cur=>fixBillPeriods({cur}));
     
     // remove dups 
     periods = periods.reduce(( acc, cur, i, arr )=>{
