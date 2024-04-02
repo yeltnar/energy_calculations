@@ -230,9 +230,12 @@ export const setupRecordsObj = (() => {
         const energy_prices_v2 = await downloadPricingHistoryArr(date_list);
         const energy_prices = { ...energy_prices_v1, ...energy_prices_v2 };
 
-        const production_obj = await getProductionContent(date_list);
+        const enrgy_production_obj = await getProductionContent({date_str_list:date_list, cache_type:'energy'});
+        addRawEnergyProduction(records_obj, enrgy_production_obj)
+        
+        const power_production_obj = await getProductionContent({date_str_list:date_list, cache_type:'power'});
+        addRawPowerProduction(records_obj, power_production_obj)
 
-        addRawProduction(records_obj, production_obj)
         addTotalUsage(records_obj);
         invertField(records_obj, 'consumption');
         addGrossUsage(records_obj);
@@ -697,7 +700,7 @@ function fixType( type ){
   }
 }
 
-function addRawProduction( records_obj, production_obj ){
+function addRawEnergyProduction( records_obj, production_obj ){
 
   for( let k in records_obj ){
     // divide by 1000 to convert to KWh 
@@ -707,6 +710,23 @@ function addRawProduction( records_obj, production_obj ){
       records_obj[k].raw_production = new Decimal(production).dividedBy(1000).toNumber(); 
     }else{
       records_obj[k].raw_production = 0; 
+    }
+  }
+
+  return records_obj;
+}
+
+// addRawPowerProduction(records_obj, power_production_obj)
+function addRawPowerProduction( records_obj, production_obj ){
+
+  for( let k in records_obj ){
+    // divide by 1000 to convert to KWh 
+
+    if( production_obj[k]!==undefined ){
+      const production = production_obj[k].value;
+      records_obj[k].raw_power_production = new Decimal(production).dividedBy(1000).toNumber(); 
+    }else{
+      records_obj[k].raw_power_production = 0; 
     }
   }
 
