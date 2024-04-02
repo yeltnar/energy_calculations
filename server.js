@@ -19,8 +19,15 @@ export function server(){
 
     router.get('all', /(\/api)?\/all/, async (ctx) => {
         const return_individual_data = ctx.request.query.i === 'true';
+        let index = ctx.request.query.index;
+        let results = await main({write:false, return_individual_data});
+        if( index !==null && index !== undefined ){
+            index = parseInt(ctx.request.query.index);
+            results = results[index];
+        }
         ctx.body = {
-            results: await main({write:false, return_individual_data})
+            results,
+            index
         };
     });
     
