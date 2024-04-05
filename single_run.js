@@ -362,7 +362,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
       return to_return.toNumber();
     })();
 
-    const oppo_earned = await (async()=>{
+    const total_saved = await (async()=>{
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
 
@@ -382,7 +382,25 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
       
     })();
 
-    const total_earned_toward_solar = new Decimal(oppo_earned).add(total_credit_earned).toNumber();
+    // const total_earned_toward_solar = new Decimal(total_saved).add(total_credit_earned).toNumber();
+    const total_earned_toward_solar = await (async()=>{
+      let to_return = new Decimal(0);
+      for (let k in cur_records_obj ){
+
+        if(cur_records_obj[k].solar_reimbursement===undefined){continue;}
+
+        to_return = to_return.add(cur_records_obj[k].solar_reimbursement);
+        if(  Number.isNaN(to_return) ){
+          throw new Error(`found NaN\n${JSON.stringify({
+            solar_reimbursement: cur_records_obj[k].solar_reimbursement,
+            k,
+            date: new Date(parseFloat(k)).toString(),
+          },null,2)}`)
+        }
+      }
+      return to_return.toNumber();
+      
+    })();
 
     const total_consumption = await (async()=>{      
       let to_return = new Decimal(0);
@@ -576,7 +594,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
         },
         money: {
           "bill credit earned: total_credit_earned": total_credit_earned,
-          "earned by not buying from grid: oppo_earned": oppo_earned,
+          "earned by not buying from grid: total_saved": total_saved,
           "earned toward solar: total_earned_toward_solar": total_earned_toward_solar,
           "avg earned: avg_toward_solar_earned": avg_toward_solar_earned,
           "naive payback years: payback_years": config.install_cost===undefined ? 'install cost missing' : config.install_cost / avg_toward_solar_earned / 365,
@@ -821,6 +839,7 @@ function addPrice(records_obj, energy_prices){
       records_obj[k].saved = 0;
     }
 
+    records_obj[k].solar_reimbursement = new Decimal(records_obj[k].saved).add(records_obj[k].earned).toNumber();
     records_obj[k].bill_energy_price = bill_energy_price.toNumber();
   }
   return records_obj;
