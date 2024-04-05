@@ -37,7 +37,7 @@ export function server(){
         
         const records_obj = await setupRecordsObj();
         
-        const results = await getInfoForRange( {records_obj, cur} ).catch(()=>'error with getInfoForRange; check data exsists for range');
+        const results = await getInfoForRange( {records_obj, cur} ).catch((e)=>{console.error(e);return 'error with getInfoForRange; check data exsists for range'});
         
         ctx.body = {
             results,

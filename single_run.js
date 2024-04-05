@@ -497,6 +497,8 @@ export async function getInfoForRange( {records_obj, cur, write} ){
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
     const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();    
+
+    const avg_toward_solar_earned = new Decimal(total_earned_toward_solar).div(days_in_range).toNumber();
    
     const total_fee = 
       new Decimal(gross_receipt_tax_reimbursement_price)
@@ -558,6 +560,7 @@ export async function getInfoForRange( {records_obj, cur, write} ){
           "bill credit earned: total_credit_earned": total_credit_earned,
           "earned by not buying from grid: oppo_earned": oppo_earned,
           "earned toward solar: total_earned_toward_solar": total_earned_toward_solar,
+          "avg earned: avg_toward_solar_earned": avg_toward_solar_earned,
         }
       },
       // need_to_fix:{
