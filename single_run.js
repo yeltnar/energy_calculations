@@ -378,7 +378,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
           },null,2)}`)
         }
       }
-      return to_return.times(-1).toNumber();
+      return to_return.toNumber();
       
     })();
 
@@ -816,7 +816,7 @@ function addPrice(records_obj, energy_prices){
       let meter_side_use = new Decimal(records_obj[k].raw_production).minus(records_obj[k].surplus_generation).toNumber();
       meter_side_use = meter_side_use < 0 ? 0 : meter_side_use; // if the meter and solar generation disagree, force to zero (likely close any way)
       records_obj[k].meter_side_use = meter_side_use;
-      records_obj[k].saved = bill_energy_price.times(meter_side_use).toNumber();
+      records_obj[k].saved = bill_energy_price.times(meter_side_use).times(-1).toNumber(); // meter side use is negitive but we want positive number 
     }else{
       records_obj[k].saved = 0;
     }
