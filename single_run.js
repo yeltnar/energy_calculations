@@ -579,6 +579,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
           "earned by not buying from grid: oppo_earned": oppo_earned,
           "earned toward solar: total_earned_toward_solar": total_earned_toward_solar,
           "avg earned: avg_toward_solar_earned": avg_toward_solar_earned,
+          "naive payback years: payback_years": config.install_cost===undefined ? 'install cost missing' : config.install_cost / avg_toward_solar_earned / 365,
         }
       },
       // need_to_fix:{
