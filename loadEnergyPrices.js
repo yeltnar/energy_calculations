@@ -200,8 +200,7 @@ async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
         skip_empty_lines: true
     });
 
-
-    records = records.map( (cur)=>{suplimentRecord(cur,'price')} );
+    records = records.map( (cur)=>{return suplimentRecord(cur,'price')} );
 
     records._from_history = true;
 

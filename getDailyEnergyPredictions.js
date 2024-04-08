@@ -31,9 +31,6 @@ export async function addFifteenMinMarks( cur_price_obj ){
     const to_return = {...cur_price_obj};
     for (let k in cur_price_obj){
 
-        console.log();
-        console.log(typeof cur_price_obj[k].date);
-
         min_increments.forEach((min_increment)=>{
             const d = new Date(cur_price_obj[k].date_ms);
             d.setMinutes(min_increment);
