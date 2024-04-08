@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-export default function suplimentRecord(cur){
+export default function suplimentRecord(cur, kind){
 
         // return cur;
 
@@ -11,7 +11,12 @@ export default function suplimentRecord(cur){
         }
 
         let min = (cur.delivery_interval-1)*15;
-        if( min < 10 ){
+        if( Number.isNaN(min) ){
+            if(kind!=='prediction'){
+                throw new Error("we're not supposed to get NaN here");
+            }
+            min = '00'; 
+        }else if( min < 10 ){
             min = "0"+min;
         }else{
             min = ""+min;
@@ -19,6 +24,10 @@ export default function suplimentRecord(cur){
 
         const date_str = `${cur.delivery_date} ${hr}:${min}`;
         let date = new Date(date_str);
+        if( !(date instanceof Date) || isNaN(date) ){
+            console.error(date_str);
+            throw new Error('could not parse suplimentRecord date');
+        }
         const date_ms = date.getTime();
         const date_formatted = date.toString();
 

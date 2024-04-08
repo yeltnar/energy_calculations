@@ -1,13 +1,13 @@
 import { parse } from 'csv-parse/sync';
 import fs from 'fs/promises';
-import {getDailyEnergyPrice} from './getDailyEnergyPrice.js';
+import {getDailyEnergyPredictions, addFifteenMinMarks} from './getDailyEnergyPredictions.js';
 import suplimentRecord from './suplimentRecord.js';
 import axios from 'axios';
 import Decimal from 'decimal.js';
 
 // const file_path = './energy_prices/jan_LZ_NORTH.csv';
-const historical_input_path = './energy_prices/historical/';
-const daily_input_path = './energy_prices/daily';
+const historical_input_path = './energy_predictions/historical/';
+const daily_input_path = './energy_predictions/daily';
 
 export async function downloadPricingHistoryArr( date_list ){
 
@@ -149,12 +149,13 @@ async function downloadSinglePricingHistory({ deliveryDateFrom, deliveryDateTo, 
     return x;
 }
 
-export async function loadEnergyPrices(){
+export async function loadEnergyPredictions(){
 
     let cur_price_obj = {};
 
-    cur_price_obj = await getDailyEnergyPrice(daily_input_path, cur_price_obj);
-    cur_price_obj = await loadHistoricalEnergyPrices(historical_input_path, cur_price_obj);
+    cur_price_obj = await getDailyEnergyPredictions(daily_input_path, cur_price_obj);
+    cur_price_obj = await addFifteenMinMarks(cur_price_obj);
+    // cur_price_obj = await loadHistoricalEnergyPrices(historical_input_path, cur_price_obj);
 
 
     return cur_price_obj;
@@ -201,7 +202,7 @@ async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
     });
 
 
-    records = records.map( (cur)=>{suplimentRecord(cur,'price')} );
+    records = records.map( suplimentRecord );
 
     records._from_history = true;
 

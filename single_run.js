@@ -7,6 +7,7 @@ import Decimal from 'decimal.js';
 import download_energy_report from './download_energy_report.js';
 import {getProductionContent} from './getProductionContent.js'
 import {loadEnergyPrices, downloadPricingHistoryArr} from './loadEnergyPrices.js'
+import {loadEnergyPredictions} from './loadEnergyPredictions.js'
 import {getBillData} from './readBillSvg.js';
 import { readdir } from 'fs';
 
@@ -210,6 +211,9 @@ export const setupRecordsObj = (() => {
         const in_directory = './in_csv';
 
         const energy_prices_v1 = await loadEnergyPrices();
+
+        // TODO add energy_predictions to dateset (somehow)
+        const energy_predictions = await loadEnergyPredictions(); 
 
         if (config.check_email === true) {
             const num_results = 3;
