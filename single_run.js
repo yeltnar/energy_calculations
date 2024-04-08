@@ -474,7 +474,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
       return to_return.toNumber();
     })();
     
-    let total_charge_no_tax = await (()=>{ 
+    let total_charge_no_tax_nor_base_fee = await (()=>{ 
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
 
@@ -485,7 +485,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
       }
       return to_return.toNumber();
     })();
-    total_charge_no_tax = new Decimal(total_charge_no_tax)
+    const total_charge_no_tax = new Decimal(total_charge_no_tax_nor_base_fee)
                           .minus(base_fee); // minus cuz of how positive/negitive works out 
 
     const {total_ercot_price, total_ercot_price_rounded} = await (async()=>{      
@@ -528,15 +528,20 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
     ////// monthly calculations //////
     const days_in_range = new Decimal(latest_obj.ms).minus(earliest_obj.ms).dividedBy(86400000).ceil().toNumber();
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
-    const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
-    const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();    
 
     const avg_toward_solar_earned = new Decimal(total_earned_toward_solar).div(days_in_range).toNumber();
+    // switching these to be per record // TODO move this to each node
+    const gross_receipt_tax_reimbursement_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(GROSS_RECEIPT_TAX_REIMBURSEMENT).toNumber();
+    const pcu_rate_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(GROSS_RECEIPT_TAX_REIMBURSEMENT).toNumber();
+    
+    // total_charge_no_tax_nor_base_fee
+    const total_fee_no_base_fee = new Decimal(gross_receipt_tax_reimbursement_price)
+    .add(pcu_rate_price)
+    .add(total_charge_no_tax_nor_base_fee)
+    .toNumber(); 
    
-    const total_fee = 
-      new Decimal(gross_receipt_tax_reimbursement_price)
-      .add(pcu_rate_price)
-      .add(total_charge_no_tax)
+    const total_fee = new Decimal(total_fee_no_base_fee)
+      .minus(base_fee)
       .toNumber();    
 
     const total_charge = 
@@ -583,13 +588,14 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
           "taken from grid: total_consumption": total_consumption,
           "sent to grid: total_surplus_generation": total_surplus_generation,
           "bill credit earned: total_credit_earned": total_credit_earned,
-          "tax1: gross_receipt_tax_reimbursement": gross_receipt_tax_reimbursement_price,
+          "tax1: gross_receipt_tax_reimbursement_price": gross_receipt_tax_reimbursement_price,
           "tax2: pcu_rate": pcu_rate_price,
           "energy provider charge: total_energy_charge": total_energy_charge,
           "oncor charge: total_oncor_price": total_oncor_price,
           "ercot charge: total_ercot_price_rounded": total_ercot_price_rounded,
           "total fee without solar: total_fee": total_fee,
           "to be charged to card: total_charge": total_charge,
+          "to be charged to card: total_fee_no_base_fee": total_fee_no_base_fee,
           'avg earned for solar production: avg_earned':avg_earned,
         },
         money: {
