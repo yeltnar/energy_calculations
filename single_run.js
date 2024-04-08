@@ -512,11 +512,19 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
     const avg_earned = new Decimal(total_credit_earned).dividedBy(total_surplus_generation).toNumber();
     const gross_receipt_tax_reimbursement_price = new Decimal(GROSS_RECEIPT_TAX_REIMBURSEMENT).times(total_charge_no_tax).toNumber();
     const pcu_rate_price = new Decimal(PCU_RATE).times(total_charge_no_tax).toNumber();    
+
+    // switching these to be per record // TODO move this to each node
+    const gross_receipt_tax_reimbursement_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(GROSS_RECEIPT_TAX_REIMBURSEMENT).toNumber();
+    const pcu_rate_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(GROSS_RECEIPT_TAX_REIMBURSEMENT).toNumber();
+    
+    // total_charge_no_tax_nor_base_fee
+    const total_fee_no_base_fee = new Decimal(gross_receipt_tax_reimbursement_price)
+    .add(pcu_rate_price)
+    .add(total_charge_no_tax_nor_base_fee)
+    .toNumber(); 
    
-    const total_fee = 
-      new Decimal(gross_receipt_tax_reimbursement_price)
-      .add(pcu_rate_price)
-      .add(total_charge_no_tax)
+    const total_fee = new Decimal(total_fee_no_base_fee)
+      .minus(base_fee)
       .toNumber();    
 
     const total_charge = 
@@ -563,13 +571,14 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
           "taken from grid: total_consumption": total_consumption,
           "sent to grid: total_surplus_generation": total_surplus_generation,
           "bill credit earned: total_credit_earned": total_credit_earned,
-          "tax1: gross_receipt_tax_reimbursement": gross_receipt_tax_reimbursement_price,
+          "tax1: gross_receipt_tax_reimbursement_price": gross_receipt_tax_reimbursement_price,
           "tax2: pcu_rate": pcu_rate_price,
           "energy provider charge: total_energy_charge": total_energy_charge,
           "oncor charge: total_oncor_price": total_oncor_price,
           "ercot charge: total_ercot_price_rounded": total_ercot_price_rounded,
           "total fee without solar: total_fee": total_fee,
           "to be charged to card: total_charge": total_charge,
+          "to be charged to card: total_fee_no_base_fee": total_fee_no_base_fee,
           'avg earned for solar production: avg_earned':avg_earned,
         },
         money: {
