@@ -903,11 +903,11 @@ function addBillPeriod(records_obj, bill_periods){
 
         // we calculate price from rate
         if( record.ercot_price===undefined && bill_period.ercot_rate !== undefined){
-          record.ercot_price = new Decimal(record.consumption).times(bill_period.ercot_rate);
+          record.ercot_price = new Decimal(record.consumption).times(bill_period.ercot_rate).toNumber();
         }
         // we calculate price from rate
         if( record.oncor_price===undefined && bill_period.oncor_rate !== undefined){
-          record.oncor_price = new Decimal(record.consumption).times(bill_period.oncor_rate);
+          record.oncor_price = new Decimal(record.consumption).times(bill_period.oncor_rate).toNumber();
         }
       }
     });    
