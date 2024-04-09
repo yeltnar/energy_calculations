@@ -37,7 +37,7 @@ export async function downloadPricingHistoryArr( date_list ){
                     settlement_point_price_dollar_kwh,
                     settlement_point_price_dollar_kwh_uncapped,
                 };
-                data = suplimentRecord(data);
+                data = suplimentRecord(data, 'price', 'NO PATH');
 
                 acc[data.date_ms] = data;
             });
@@ -156,7 +156,6 @@ export async function loadEnergyPrices(){
     cur_price_obj = await getDailyEnergyPrice(daily_input_path, cur_price_obj);
     cur_price_obj = await loadHistoricalEnergyPrices(historical_input_path, cur_price_obj);
 
-
     return cur_price_obj;
 }
 
@@ -200,7 +199,7 @@ async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
         skip_empty_lines: true
     });
 
-    records = records.map( (cur)=>{return suplimentRecord(cur,'price')} );
+    records = records.map( (cur)=>{return suplimentRecord(cur,'price', file_path)} );
 
     records._from_history = true;
 
@@ -208,8 +207,6 @@ async function loadSingleHistoricalEnergyPrices(file_path, obj_for_data){
         acc[cur.date_ms] = cur;
         return acc;
     },obj_for_data);
-
-    // console.log(to_return);
     
     return to_return;
 }

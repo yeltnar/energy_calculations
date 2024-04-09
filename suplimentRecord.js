@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-export default function suplimentRecord(cur, kind){
+export default function suplimentRecord(cur, kind, file_path){
 
         // return cur;
 
@@ -32,7 +32,8 @@ export default function suplimentRecord(cur, kind){
         const date_formatted = date.toString();
 
         if( !Decimal.isDecimal(cur.settlement_point_price) ){
-            cur.settlement_point_price = new Decimal(parseFloat(cur.settlement_point_price));
+            const no_comma = (cur.settlement_point_price).split(',').join('');
+            cur.settlement_point_price = new Decimal(parseFloat(no_comma));
         }
 
         cur.settlement_point_price_dollar_kwh_uncapped = new Decimal(cur.settlement_point_price).dividedBy(1000);
@@ -41,11 +42,13 @@ export default function suplimentRecord(cur, kind){
         
         cur.settlement_point_price_dollar_kwh = cur.settlement_point_price_dollar_kwh_uncapped > .25 ? new Decimal(.25) : cur.settlement_point_price_dollar_kwh_uncapped;
 
-        return {
+        const to_return = {
             date_str,
             date,
             date_ms,
             date_formatted,
             ...cur
         };
+
+        return to_return;
     }
