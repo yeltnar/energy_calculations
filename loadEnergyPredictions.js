@@ -37,7 +37,7 @@ export async function downloadPricingHistoryArr( date_list ){
                     settlement_point_price_dollar_kwh,
                     settlement_point_price_dollar_kwh_uncapped,
                 };
-                data = suplimentRecord(data);
+                data = suplimentRecord(data, 'price', 'NO PATH');
 
                 acc[data.date_ms] = data;
             });
