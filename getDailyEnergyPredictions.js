@@ -19,6 +19,9 @@ const INTERVAL_ENDING_MIN_MAP = {
 
 export async function getDailyEnergyPredictions(daily_input_path, cur_price_obj){
     let to_return = await readDailyEnergyCSV(daily_input_path);
+    if(to_return===undefined){
+        return undefined;
+    }
     to_return = to_return[DESIRED_ZONE].reduce((acc,cur)=>{
         acc[cur.date_ms] = cur;
         return acc;
@@ -56,7 +59,7 @@ async function readDailyEnergyCSV(daily_input_path){
     html_files = html_files.filter(c=>/\.html$/i.test(c));
 
     if(html_files.length===0){
-        throw new Error('no files found; exiting');
+        console.warn('no energy predections found');
     }
 
     let report_obj;
