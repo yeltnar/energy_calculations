@@ -7,12 +7,12 @@ services:
     container_name: energy_calculations
     volumes:
       - ${PWD}/energy_prices:/app/energy_prices
+      - ${PWD}/energy_predictions:/app/energy_predictions
       - ${PWD}/bills:/app/bills
       - ${PWD}/in_csv:/app/in_csv
       - ${PWD}/production_content:/app/production_content
       - ${PWD}/energy_prices/daily:/app/energy_prices/daily
       - /etc/localtime:/etc/localtime:ro
-    restart: unless-stopped
     environment: 
       - TZ=America/Chicago
     # network_mode: host
