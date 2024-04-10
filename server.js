@@ -64,6 +64,8 @@ export function server(){
     });
     
     router.get('range', /(\/api)?\//, async (ctx) => {
+
+        const {days_after, days_before, start:q_start, end:q_end} = ctx.request.query;
         
         const default_value = {
             "start": "0",
@@ -73,6 +75,26 @@ export function server(){
         };
         
         let cur = {...default_value, ...ctx.request.query}
+
+        if( days_after !== undefined ){
+
+            const to_parse = q_start || q_end;
+            const start = new Date( to_parse );
+            const end = new Date( to_parse );
+            end.setDate(end.getDate() + parseFloat(days_after));
+            cur.start = start.getTime();
+            cur.end = end.getTime();
+
+        }else if( days_before !== undefined ){
+            
+            const to_parse = q_start || q_end;
+            const start = new Date( to_parse );
+            const end = new Date( to_parse );
+            start.setDate(start.getDate() - parseFloat(days_before) + 1); // add 1 because we include the provided day 
+            cur.start = start.getTime();
+            cur.end = end.getTime();
+        }
+
         cur = fixBillPeriods({cur, add_one_day:false, include_end_day:true});
         
         const records_obj = await setupRecordsObj();
