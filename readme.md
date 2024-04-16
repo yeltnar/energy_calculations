@@ -16,3 +16,10 @@ https://www.ercot.com/content/cdr/html/real_time_spp.html
 
 day-ahead-prices
 https://www.ercot.com/content/cdr/html/dam_spp.html
+
+historical price info
+https://www.ercot.com/mktinfo/prices
+use link "Historical RTM Load Zone and Hub Prices"
+should be
+https://www.ercot.com/mp/data-products/data-product-details?id=NP6-785-ER
+
