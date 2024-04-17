@@ -536,7 +536,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
     const avg_toward_solar_earned = new Decimal(total_earned_toward_solar).div(days_in_range).toNumber();
     // switching these to be per record // TODO move this to each node
     const gross_receipt_tax_reimbursement_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(GROSS_RECEIPT_TAX_REIMBURSEMENT).toNumber();
-    const pcu_rate_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(GROSS_RECEIPT_TAX_REIMBURSEMENT).toNumber();
+    const pcu_rate_price = (new Decimal(total_charge_no_tax_nor_base_fee).minus(base_fee)).times(PCU_RATE).toNumber();
     
     // total_charge_no_tax_nor_base_fee
     const total_fee_no_base_fee = new Decimal(gross_receipt_tax_reimbursement_price)
@@ -593,10 +593,11 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
           "sent to grid: total_surplus_generation": total_surplus_generation,
           "bill credit earned: total_credit_earned": total_credit_earned,
           "tax1: gross_receipt_tax_reimbursement_price": gross_receipt_tax_reimbursement_price,
-          "tax2: pcu_rate": pcu_rate_price,
+          "tax2: pcu_rate_price": pcu_rate_price,
           "energy provider charge: total_energy_charge": total_energy_charge,
           "oncor charge: total_oncor_price": total_oncor_price,
           "ercot charge: total_ercot_price_rounded": total_ercot_price_rounded,
+          "ercot charge: total_ercot_price": total_ercot_price,
           "total fee without solar: total_fee": total_fee,
           "to be charged to card: total_charge": total_charge,
           "to be charged to card: total_fee_no_base_fee": total_fee_no_base_fee,
