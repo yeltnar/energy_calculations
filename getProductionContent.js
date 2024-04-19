@@ -148,6 +148,8 @@ async function requestProductionContent(site, api_key, startValue, endValue, cac
             "msg": 'skipping network request',
             // site: config.site,
             // api_key: config.api_key,
+            startValue, 
+            endValue,
             check_solaredge: config.check_solaredge,
         })
         skip = true;

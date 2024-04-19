@@ -13,3 +13,5 @@ charge_no_tax
 # this can be used to convert histoical data to single sheets... need to filter out zone I care about 
 libreoffice --headless --convert-to "csv:Text - txt - csv (StarCalc):44,34,,,,,,,,,,-1" ./rpt.00013061.0000000000000000.RTMLZHBSPP_2023.xlsx
 
+read file like `IntervalData.csv` in a way which makes it the final source of truth
+... same for pricing with `./history` directory 

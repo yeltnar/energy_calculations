@@ -23,3 +23,5 @@ use link "Historical RTM Load Zone and Hub Prices"
 should be
 https://www.ercot.com/mp/data-products/data-product-details?id=NP6-785-ER
 
+
+make sure to download PRODUCTION AND PRICE data at end of bill period... the numbers the day after seem to change 
