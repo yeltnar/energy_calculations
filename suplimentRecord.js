@@ -39,9 +39,14 @@ export default function suplimentRecord(cur, kind, file_path){
         cur.settlement_point_price_dollar_kwh_uncapped = new Decimal(cur.settlement_point_price).dividedBy(1000);
         delete cur.settlement_point_type;
         delete cur.repeated_hour_flag;    
-        
-        cur.settlement_point_price_dollar_kwh = cur.settlement_point_price_dollar_kwh_uncapped > .25 ? new Decimal(.25) : cur.settlement_point_price_dollar_kwh_uncapped;
 
+        if( cur.settlement_point_price_dollar_kwh_uncapped > .25 ){
+            cur.settlement_point_price_dollar_kwh = new Decimal(.25);
+        }else if( cur.settlement_point_price_dollar_kwh_uncapped < 0 ){
+            cur.settlement_point_price_dollar_kwh = new Decimal(0);
+        }else{
+            cur.settlement_point_price_dollar_kwh = cur.settlement_point_price_dollar_kwh_uncapped
+        }
         const to_return = {
             date_str,
             date,
