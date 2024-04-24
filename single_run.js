@@ -478,6 +478,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
       return to_return.toNumber();
     })();
     
+    // This includes Oncor and Ercot fees 
     let total_charge_no_tax_nor_base_fee = await (()=>{ 
       let to_return = new Decimal(0);
       for (let k in cur_records_obj ){
@@ -566,9 +567,7 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
       write,
     }); 
     
-    const largest_production = getLargestProduction(cur_records_obj);
-
-    
+    const largest_production = getLargestProduction(cur_records_obj);    
 
     const to_return = {
       times:{
@@ -599,8 +598,8 @@ export async function getInfoForRange( {records_obj, cur, write, return_individu
           "ercot charge: total_ercot_price_rounded": total_ercot_price_rounded,
           "ercot charge: total_ercot_price": total_ercot_price,
           "total fee without solar: total_fee": total_fee,
+          "charge before fees: total_fee_no_base_fee": total_fee_no_base_fee,
           "to be charged to card: total_charge": total_charge,
-          "to be charged to card: total_fee_no_base_fee": total_fee_no_base_fee,
           'avg earned for solar production: avg_earned':avg_earned,
         },
         money: {
