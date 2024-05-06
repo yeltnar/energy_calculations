@@ -22,7 +22,11 @@ export function server(){
         let index = ctx.request.query.index;
         let results = await main({write:false, return_individual_data});
         if( index !==null && index !== undefined ){
-            index = parseInt(ctx.request.query.index);
+            if( index === "latest" ){
+                index = results.length - 1;
+            }else{
+                index = parseInt(ctx.request.query.index);
+            }
             results = results[index];
         }
         ctx.body = {
