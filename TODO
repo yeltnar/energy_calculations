@@ -13,7 +13,7 @@ charge_no_tax
 # this can be used to convert histoical data to single sheets... need to filter out zone I care about 
 libreoffice --headless --convert-to "csv:Text - txt - csv (StarCalc):44,34,,,,,,,,,,-1" ./*.xlsx
 # TODO make next line keep the column titles 
-ls | gawk 'match($0, /-(.*)\.csv/, a){print "cat \""$0"\" | grep LZ_NORTH | grep -v LZEW > "a[1]".csv; rm \"" $0"\""}' | bash 
+ls | gawk -v q="'" 'match($0, /_([0-9]{4}).*-(.*)\.csv/, a){print "bash -c " q "cat \""$0"\" | head -n1 ; cat \""$0"\" | grep LZ_NORTH | grep -v LZEW" q " > "a[1]"_"a[2]".csv; rm \"" $0"\""}' | head -n1
 
 read file like `IntervalData.csv` in a way which makes it the final source of truth
 ... same for pricing with `./history` directory 
