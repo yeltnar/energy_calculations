@@ -2,7 +2,6 @@ node_modules
 production_content
 r.sh
 config/local.json
-energy_prices
 .DS_Store
 config.sqfs
 log.log
