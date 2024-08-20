@@ -131,7 +131,7 @@ async function requestProductionContent(site, api_key, startValue, endValue, cac
         }
 
         const url = `https://monitoringapi.solaredge.com/site/${site}/${cache_type}?timeUnit=${timeUnit}&api_key=${api_key}&${startKey}=${final_startValue}&${endKey}=${final_endValue}`;
-        const _url = `https://do.andbrant.com`;
+        const _url = `https://ip.andbrant.com`;
 
         to_return = (await axios.get(url)).data;
         // console.log(JSON.stringify(to_return))
@@ -215,3 +215,4 @@ function getMonthDeats(date_var){
         day
     };
 }
+
