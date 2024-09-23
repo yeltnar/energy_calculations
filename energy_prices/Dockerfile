@@ -2,12 +2,11 @@ FROM nixos/nix:latest
 
 ARG TZ=America/Chicago
 
-COPY ./shell.nix /shell.nix
 
-RUN nix-shell /shell.nix 
+RUN nix-env -iA nixpkgs.neovim -iA nixpkgs.libreoffice -iA nixpkgs.gawk 
 
 COPY ./start.sh /start.sh
 
 RUN chmod +x /start.sh
 
-CMD nix-shell --command /start.sh /shell.nix
+CMD /start.sh
