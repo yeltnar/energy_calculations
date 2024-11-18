@@ -81,7 +81,13 @@ async function getDailyReportObj(file_path, report_obj={}){
                 // if (key!==DESIRED_ZONE){return;} // only deal with my zone 
 
                 const delivery_date = row_arr[0];
-                const interval_ending = row_arr[1];                
+                const interval_ending = /[0-9]{4}/.exec(row_arr[1])[0]; 
+
+
+                if( interval_ending.includes('*') ){
+                  throw new Error('* is not a date'); 
+                }
+
                 
                 let  delivery_min = /.{2}$/.exec(interval_ending)[0];
                 let  delivery_interval = INTERVAL_ENDING_MIN_MAP[delivery_min];
