@@ -13,6 +13,11 @@ export default function suplimentRecord(cur, kind, file_path){
         let min = (cur.delivery_interval-1)*15;
         if( Number.isNaN(min) ){
             if(kind!=='prediction'){
+		console.log({
+			file_path,
+			cur,
+			kind,
+		});
                 throw new Error("we're not supposed to get NaN here");
             }
             min = '00'; 
